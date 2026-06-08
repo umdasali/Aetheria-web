@@ -4,7 +4,9 @@
       "Bash(grep -E \"\\\\.\\(jsx?|tsx?|css|scss\\)$\")",
       "Bash(mkdir -p /Users/codeclouds-mdalisherali/ziriverse-web/public)",
       "Bash(ln -sf ../assets assets)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git -C /Users/codeclouds-mdalisherali/ziriverse-web status --short)",
+      "Bash(git -C /Users/codeclouds-mdalisherali/ziriverse-web log --oneline -5)"
     ]
   }
 }
