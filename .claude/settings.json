@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -E \"\\\\.\\(jsx?|tsx?|css|scss\\)$\")",
+      "Bash(mkdir -p /Users/codeclouds-mdalisherali/ziriverse-web/public)",
+      "Bash(ln -sf ../assets assets)",
+      "Bash(npm run *)"
+    ]
+  }
+}

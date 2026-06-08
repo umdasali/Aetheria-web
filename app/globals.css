@@ -20,6 +20,56 @@
 
 html { scroll-behavior: smooth; }
 
+/* ── Sovereign card animations ─────────────────────────────────────────────── */
+@keyframes sovereignBorderPulse {
+  0%, 100% { box-shadow: 0 0 12px 4px rgba(255,215,0,0.22), 0 0 32px 2px rgba(255,215,0,0.09); }
+  50%       { box-shadow: 0 0 22px 8px rgba(255,215,0,0.45), 0 0 50px 4px rgba(255,215,0,0.20); }
+}
+
+@keyframes sovereignShimmer {
+  0%   { transform: translateX(-120%) skewX(-15deg); opacity: 0; }
+  4%   { opacity: 1; }
+  46%  { opacity: 1; }
+  52%  { opacity: 0; transform: translateX(220%) skewX(-15deg); }
+  100% { opacity: 0; transform: translateX(-120%) skewX(-15deg); }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes floatY {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-12px); }
+}
+
+@keyframes shimmerText {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+@keyframes rotateSlow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Scroll reveal utility ──────────────────────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 body {
   background: var(--bg-deep);
   color: var(--text);

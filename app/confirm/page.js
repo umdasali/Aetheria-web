@@ -1,8 +1,15 @@
-export const metadata = {
-  title: 'Email Verified — Aetheria: Legends Unbound',
-};
+'use client';
+
+import { useEffect } from 'react';
 
 export default function ConfirmPage() {
+  // Strip the Supabase token hash from the URL so it doesn't show to the user.
+  // The email is already confirmed server-side before Supabase redirects here.
+  useEffect(() => {
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []);
   return (
     <main style={{
       minHeight: '100vh', background: '#08031A',
@@ -10,6 +17,7 @@ export default function ConfirmPage() {
       alignItems: 'center', justifyContent: 'center',
       padding: '32px 20px', position: 'relative', overflow: 'hidden',
     }}>
+      <title>Email Verified — Aetheria: Legends Unbound</title>
       {/* Background orbs */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0,
         background: [
