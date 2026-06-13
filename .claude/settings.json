@@ -6,7 +6,12 @@
       "Bash(ln -sf ../assets assets)",
       "Bash(npm run *)",
       "Bash(git -C /Users/codeclouds-mdalisherali/ziriverse-web status --short)",
-      "Bash(git -C /Users/codeclouds-mdalisherali/ziriverse-web log --oneline -5)"
+      "Bash(git -C /Users/codeclouds-mdalisherali/ziriverse-web log --oneline -5)",
+      "Bash(npx next *)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(echo \"Started PID $!\")",
+      "Bash(sleep 8 && tail -20 /tmp/next-dev.log)",
+      "Read(//private/tmp/**)"
     ]
   }
 }
