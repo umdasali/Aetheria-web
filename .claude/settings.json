@@ -11,7 +11,8 @@
       "Bash(pkill -f \"next dev\")",
       "Bash(echo \"Started PID $!\")",
       "Bash(sleep 8 && tail -20 /tmp/next-dev.log)",
-      "Read(//private/tmp/**)"
+      "Read(//private/tmp/**)",
+      "WebFetch(domain:pgr.kurogame.net)"
     ]
   }
 }

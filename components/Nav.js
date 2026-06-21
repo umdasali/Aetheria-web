@@ -17,12 +17,20 @@ export default function Nav() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    // Body scroll is locked on homepage (full-page snap); listen on the fp container instead
+    const fp = document.getElementById('fp');
+    const target = fp || window;
+    const onScroll = () => setScrolled((fp ? fp.scrollTop : window.scrollY) > 40);
+    target.addEventListener('scroll', onScroll, { passive: true });
+    // Always show backdrop on pages that lock body scroll
+    if (fp) setScrolled(true);
+    return () => target.removeEventListener('scroll', onScroll);
   }, []);
 
   useEffect(() => {
+    // Don't fight the body-lock on the full-page scroll homepage
+    const fp = document.getElementById('fp');
+    if (fp) return;
     if (open) document.body.style.overflow = 'hidden';
     else document.body.style.overflow = '';
     return () => { document.body.style.overflow = ''; };
@@ -80,7 +88,7 @@ export default function Nav() {
               </Link>
             );
           })}
-          <a href="#download" style={{
+          <a href="#download" onClick={e=>{const fp=document.getElementById('fp');if(fp){e.preventDefault();fp.scrollTo({top:7*fp.clientHeight,behavior:'smooth'});}}} style={{
             padding: '8px 22px', borderRadius: 8, fontSize: 13, fontWeight: 700,
             background: 'linear-gradient(135deg, #7C3AED, #DB2777)',
             color: '#fff', textDecoration: 'none',
@@ -132,7 +140,7 @@ export default function Nav() {
               );
             })}
             <a href="#download"
-              onClick={() => setOpen(false)}
+              onClick={e=>{setOpen(false);const fp=document.getElementById('fp');if(fp){e.preventDefault();fp.scrollTo({top:7*fp.clientHeight,behavior:'smooth'});}}}
               style={{
                 marginTop: 12, padding: '16px 20px', borderRadius: 12, fontSize: 18, fontWeight: 700,
                 background: 'linear-gradient(135deg, #7C3AED, #DB2777)',

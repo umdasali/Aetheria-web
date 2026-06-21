@@ -1,28 +1,30 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg-deep:       #08031A;
-  --bg-base:       #0E0720;
-  --bg-card:       #1C0F38;
+  --bg-deep:       #06040F;
+  --bg-base:       #0B0817;
+  --bg-card:       #100D1F;
   --primary:       #7C3AED;
   --primary-light: #A78BFA;
+  --accent:        #38BDF8;
+  --accent-dim:    #0EA5E9;
   --secondary:     #DB2777;
   --secondary-dark:#9D174D;
   --text:          #F0EAFF;
   --text-soft:     #C4B5FD;
-  --text-muted:    #8B7EC8;
-  --border:        rgba(167,139,250,0.18);
-  --border-strong: rgba(167,139,250,0.42);
+  --text-muted:    #6B6090;
+  --border:        rgba(255,255,255,0.07);
+  --border-strong: rgba(255,255,255,0.15);
   --gold:          #D97706;
   --success:       #059669;
   --danger:        #DC2626;
-  --glass:         rgba(255,255,255,0.05);
-  --glass-border:  rgba(255,255,255,0.1);
+  --glass:         rgba(255,255,255,0.03);
+  --glass-border:  rgba(255,255,255,0.08);
 }
 
 html { scroll-behavior: smooth; }
 
-/* ── Sovereign card animations ─────────────────────────────────────────────── */
+/* ── Keyframes ───────────────────────────────────────────────────────────────── */
 @keyframes sovereignBorderPulse {
   0%, 100% { box-shadow: 0 0 12px 4px rgba(255,215,0,0.22), 0 0 32px 2px rgba(255,215,0,0.09); }
   50%       { box-shadow: 0 0 22px 8px rgba(255,215,0,0.45), 0 0 50px 4px rgba(255,215,0,0.20); }
@@ -46,14 +48,9 @@ html { scroll-behavior: smooth; }
   50%       { transform: translateY(-12px); }
 }
 
-@keyframes shimmerText {
-  0%   { background-position: -200% center; }
-  100% { background-position: 200% center; }
-}
-
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50%       { opacity: 0.6; }
+  50%       { opacity: 0.5; }
 }
 
 @keyframes rotateSlow {
@@ -66,27 +63,37 @@ html { scroll-behavior: smooth; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes borderGlow {
-  0%, 100% { box-shadow: 0 0 0px rgba(124,58,237,0.3); }
-  50%       { box-shadow: 0 0 20px rgba(124,58,237,0.6); }
-}
-
 @keyframes scrollBounce {
-  0%, 100% { transform: translateY(0); opacity: 0.6; }
-  50%       { transform: translateY(6px); opacity: 1; }
+  0%, 100% { transform: translateY(0); opacity: 0.5; }
+  50%       { transform: translateY(8px); opacity: 1; }
 }
 
-/* ── Scroll reveal utility ──────────────────────────────────────────────────── */
+/* Line sweep — PGR-style scan across elements */
+@keyframes lineSweep {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
+/* Accent glow pulse for lines and borders */
+@keyframes accentPulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
+}
+
+/* ── Scroll reveal ───────────────────────────────────────────────────────────── */
 .reveal {
   opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.7s ease, transform 0.7s ease;
+  transform: translateY(20px);
+  transition: opacity 0.65s ease, transform 0.65s ease;
 }
 .reveal.visible {
   opacity: 1;
   transform: translateY(0);
 }
 
+/* ── Body ────────────────────────────────────────────────────────────────────── */
 body {
   background: var(--bg-deep);
   color: var(--text);
@@ -96,32 +103,131 @@ body {
 }
 
 a { color: inherit; text-decoration: none; }
+::selection { background: rgba(56,189,248,0.25); }
 
-::selection { background: rgba(124,58,237,0.35); }
-
-/* ── Scrollbar ──────────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 5px; height: 5px; }
+/* ── Scrollbar ───────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: var(--bg-deep); }
-::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.45); border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,0.75); }
+::-webkit-scrollbar-thumb { background: rgba(56,189,248,0.3); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(56,189,248,0.6); }
 
-/* ── Scroll arrow buttons ───────────────────────────────────────────────────── */
+/* ── Tech corner bracket — PGR signature element ────────────────────────────── */
+.tech-bracket {
+  position: relative;
+}
+.tech-bracket::before,
+.tech-bracket::after {
+  content: '';
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  transition: all 0.35s ease;
+  opacity: 0;
+}
+.tech-bracket::before {
+  top: -1px; left: -1px;
+  border-top: 1.5px solid var(--accent);
+  border-left: 1.5px solid var(--accent);
+}
+.tech-bracket::after {
+  bottom: -1px; right: -1px;
+  border-bottom: 1.5px solid var(--accent);
+  border-right: 1.5px solid var(--accent);
+}
+.tech-bracket:hover::before,
+.tech-bracket:hover::after {
+  opacity: 1;
+  width: 22px;
+  height: 22px;
+}
+
+/* Static bracket variant (always visible) */
+.tech-bracket-always::before,
+.tech-bracket-always::after {
+  opacity: 0.45 !important;
+}
+.tech-bracket-always:hover::before,
+.tech-bracket-always:hover::after {
+  opacity: 1 !important;
+}
+
+/* ── Angular clip-path button (PGR chamfer style) ───────────────────────────── */
+.btn-sharp {
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+.btn-sharp-sm {
+  clip-path: polygon(7px 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%, 0 7px);
+}
+
+/* ── Diagonal section upper edge ─────────────────────────────────────────────── */
+.diagonal-top {
+  clip-path: polygon(0 32px, 100% 0, 100% 100%, 0 100%);
+  padding-top: calc(clamp(60px,8vw,120px) + 32px) !important;
+  margin-top: -2px;
+}
+
+/* ── Grid line background texture ───────────────────────────────────────────── */
+.grid-texture {
+  background-image:
+    linear-gradient(rgba(56,189,248,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56,189,248,0.035) 1px, transparent 1px);
+  background-size: 52px 52px;
+}
+
+/* ── Horizontal scan line overlay ───────────────────────────────────────────── */
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0,0,0,0.06) 3px,
+    rgba(0,0,0,0.06) 4px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── Line sweep animation over an element ───────────────────────────────────── */
+.sweep-parent { position: relative; overflow: hidden; }
+.sweep-parent::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; width: 60px;
+  background: linear-gradient(90deg, transparent, rgba(56,189,248,0.12), transparent);
+  animation: lineSweep 5s ease-in-out infinite;
+  z-index: 2; pointer-events: none;
+}
+
+/* ── Thin neon accent line ───────────────────────────────────────────────────── */
+.accent-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  animation: accentPulse 3s ease-in-out infinite;
+}
+
+/* ── Scroll arrow buttons ────────────────────────────────────────────────────── */
 .scroll-arrow {
-  width: 38px; height: 38px; border-radius: 50%;
-  background: rgba(124,58,237,0.18); border: 1px solid rgba(167,139,250,0.3);
-  color: #C4B5FD; font-size: 20px; cursor: pointer;
+  width: 36px; height: 36px;
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  background: rgba(56,189,248,0.08);
+  border: none;
+  color: #38BDF8; font-size: 20px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  transition: background 0.2s, border-color 0.2s, color 0.2s;
+  transition: background 0.2s, color 0.2s;
   flex-shrink: 0;
+  outline: 1px solid rgba(56,189,248,0.25);
 }
 .scroll-arrow:hover {
-  background: rgba(124,58,237,0.38); border-color: rgba(167,139,250,0.7); color: #fff;
+  background: rgba(56,189,248,0.2);
+  color: #fff;
+  outline-color: rgba(56,189,248,0.7);
 }
 
-/* ── Mobile nav ─────────────────────────────────────────────────────────────── */
-.nav-mobile-menu {
-  animation: slideDown 0.22s ease;
-}
+/* ── Mobile nav ──────────────────────────────────────────────────────────────── */
+.nav-mobile-menu { animation: slideDown 0.22s ease; }
 
 .nav-hamburger {
   display: none;
@@ -129,8 +235,8 @@ a { color: inherit; text-decoration: none; }
   padding: 6px; border: none; background: transparent;
 }
 .nav-hamburger span {
-  display: block; width: 22px; height: 2px;
-  background: #C4B5FD; border-radius: 2px;
+  display: block; width: 22px; height: 1.5px;
+  background: #C4B5FD;
   transition: all 0.25s;
 }
 .nav-hamburger.open span:nth-child(1) { transform: rotate(45deg) translate(5px, 5px); }
@@ -140,12 +246,4 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 768px) {
   .nav-links-desktop { display: none !important; }
   .nav-hamburger     { display: flex !important; }
-}
-
-/* ── Card hover lift ────────────────────────────────────────────────────────── */
-.card-lift {
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-}
-.card-lift:hover {
-  transform: translateY(-6px);
 }

@@ -103,14 +103,16 @@ export default function PrivacyPage() {
 
             <Section title="1. Information We Collect">
               <UL items={[
-                <><strong style={{ color: C.text }}>Account information (optional).</strong> If you create a cloud account to back up your progress, we collect the email address and password you provide. Passwords are stored and verified by our authentication provider (Supabase) and are never visible to us in plain text.</>,
-                <><strong style={{ color: C.text }}>Game progress.</strong> When cloud save is enabled, your in-game data (heroes, currencies, story and tower progress, settings, leaderboard score and chosen display name) is stored so it can sync across your devices.</>,
-                <><strong style={{ color: C.text }}>Diagnostic data.</strong> If a crash occurs, we may collect anonymous technical information (device model, OS version, error details) through our crash-reporting provider (Sentry) to fix problems.</>,
+                <><strong style={{ color: C.text }}>Account information (optional).</strong> If you create a cloud account, we collect the email address and password you provide. Passwords are stored and verified by Supabase (our authentication provider) and are never visible to us in plain text.</>,
+                <><strong style={{ color: C.text }}>Display name.</strong> The username you choose for leaderboard display is stored with your account. Choose a name you are comfortable making public.</>,
+                <><strong style={{ color: C.text }}>Game progress data.</strong> When cloud save is enabled, we store your heroes collected, currencies, story chapter and stage progress, Endless Tower floor, team loadouts, settings, and leaderboard score.</>,
+                <><strong style={{ color: C.text }}>Gameplay events.</strong> Hero summon results and battle outcomes are recorded as part of your cloud save to reconstruct your game state across devices.</>,
+                <><strong style={{ color: C.text }}>Diagnostic &amp; device data.</strong> If a crash occurs, we may collect anonymous technical information — device model, operating system version, device identifier, and error details — through our crash-reporting provider (Sentry) to diagnose and fix problems.</>,
               ]} />
               <P>
                 You can play the entire Game offline without creating an account. We do{' '}
-                <strong style={{ color: C.text }}>not</strong> collect your contacts, location, photos, microphone,
-                or advertising identifiers, and the Game contains no third-party ads.
+                <strong style={{ color: C.text }}>not</strong> collect your contacts, location, camera, photos,
+                microphone, or advertising identifiers, and the Game contains no third-party ads.
               </P>
             </Section>
 
@@ -136,8 +138,14 @@ export default function PrivacyPage() {
                 Cloud data is kept while your account exists. You can permanently delete your account and all
                 associated cloud data at any time from within the Game:{' '}
                 <strong style={{ color: C.text }}>Settings → Cloud → Delete Account</strong>. This removes your
-                authentication record, your cloud save, and your leaderboard entry, and erases the Game's data on
-                your device. Deletion is immediate and cannot be undone.
+                authentication record, cloud save, leaderboard entry, and display name. Deletion is immediate and
+                cannot be undone.
+              </P>
+              <P>
+                For full deletion instructions — including an email-based alternative — see our{' '}
+                <Link href="/account-deletion" style={{ color: C.primaryL, textDecoration: 'none', borderBottom: '1px solid rgba(167,139,250,0.3)' }}>
+                  Account Deletion page
+                </Link>.
               </P>
             </Section>
 

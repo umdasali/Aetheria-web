@@ -1,852 +1,702 @@
 'use client';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Nav from '../components/Nav';
 import HeroCard from '../components/HeroCard';
 import { SOVEREIGN_HEROES, FACTIONS, BOSSES, HEROES } from '../lib/gameData';
 
-// ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
-  bgDeep:      '#08031A',
-  bgBase:      '#0E0720',
-  bgCard:      '#1C0F38',
-  primary:     '#7C3AED',
-  primaryL:    '#A78BFA',
-  secondary:   '#DB2777',
-  text:        '#F0EAFF',
-  textSoft:    '#C4B5FD',
-  textMuted:   '#8B7EC8',
-  border:      'rgba(167,139,250,0.18)',
-  borderHov:   'rgba(167,139,250,0.45)',
-  glass:       'rgba(255,255,255,0.05)',
-  glassBorder: 'rgba(255,255,255,0.1)',
-  gold:        '#D97706',
+  bgDeep:'#06040F', bgBase:'#0B0817', bgCard:'#100D1F',
+  primary:'#7C3AED', primaryL:'#A78BFA',
+  accent:'#38BDF8', secondary:'#DB2777',
+  text:'#F0EAFF', textSoft:'#C4B5FD', textMuted:'#6B6090',
+  border:'rgba(255,255,255,0.07)', gold:'#D97706',
 };
+const G  = `linear-gradient(rgba(56,189,248,.032) 1px,transparent 1px),linear-gradient(90deg,rgba(56,189,248,.032) 1px,transparent 1px)`;
+const GS = '52px 52px';
+const ch = (p=10) => `polygon(${p}px 0,100% 0,100% calc(100% - ${p}px),calc(100% - ${p}px) 100%,0 100%,0 ${p}px)`;
 
-function useReveal() {
-  useEffect(() => {
-    const els = document.querySelectorAll('.reveal');
-    const obs = new IntersectionObserver(
-      (entries) => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }),
-      { threshold: 0.1 }
-    );
-    els.forEach(el => obs.observe(el));
-    return () => obs.disconnect();
-  }, []);
-}
+const SMETA = [
+  {id:'intro',    label:'INTRO'},
+  {id:'sov',      label:'SOVEREIGNS'},
+  {id:'factions', label:'FACTIONS'},
+  {id:'heroes',   label:'HEROES'},
+  {id:'combat',   label:'COMBAT'},
+  {id:'world',    label:'WORLD'},
+  {id:'story',    label:'STORY'},
+  {id:'download', label:'DOWNLOAD'},
+];
 
-// ─── Section label with flanking decorative lines ────────────────────────────
-function SectionLabel({ children }) {
+function Tag({ children, color }) {
+  const c = color || C.accent;
   return (
-    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-      <div style={{ width: 36, height: 1, background: 'linear-gradient(to right, transparent, rgba(167,139,250,0.55))' }} />
-      <div style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        background: 'rgba(124,58,237,0.13)', border: '1px solid rgba(124,58,237,0.3)',
-        borderRadius: 20, padding: '5px 14px',
-      }}>
-        <div style={{
-          width: 5, height: 5, borderRadius: '50%',
-          background: C.primaryL, boxShadow: `0 0 7px ${C.primaryL}`,
-          animation: 'pulse 2s infinite',
-        }} />
-        <span style={{ fontSize: 10, fontWeight: 800, color: C.primaryL, letterSpacing: 3, textTransform: 'uppercase' }}>{children}</span>
-      </div>
-      <div style={{ width: 36, height: 1, background: 'linear-gradient(to left, transparent, rgba(167,139,250,0.55))' }} />
+    <div style={{display:'inline-flex',alignItems:'center',gap:10,marginBottom:12}}>
+      <div style={{width:2,height:16,background:`linear-gradient(to bottom,${c},${C.primary})`}}/>
+      <span style={{fontSize:9,fontWeight:700,color:c,letterSpacing:4,textTransform:'uppercase'}}>{children}</span>
+      <div style={{width:36,height:1,background:`linear-gradient(to right,${c}55,transparent)`}}/>
     </div>
   );
 }
 
-// ─── Floating hero card ───────────────────────────────────────────────────────
-function FloatingCard({ hero, delay = 0, offset = 0 }) {
+function Num({ n, left }) {
   return (
     <div style={{
-      animation: `floatY 4s ease-in-out ${delay}s infinite`,
-      transform: `translateY(${offset}px)`,
-      filter: 'drop-shadow(0 24px 48px rgba(0,0,0,0.7))',
-    }}>
-      <HeroCard hero={hero} width={180} compact={false} />
+      position:'absolute',
+      [left?'left':'right']:'-2vw',
+      top:'50%',transform:'translateY(-50%)',
+      fontSize:'clamp(100px,18vw,240px)',fontWeight:900,
+      color:'rgba(56,189,248,.026)',letterSpacing:-10,
+      pointerEvents:'none',lineHeight:1,userSelect:'none',zIndex:0,
+    }}>{n}</div>
+  );
+}
+
+/* ── shared horizontal scroll strip used on mobile ── */
+function HScroll({ children, pad }) {
+  return (
+    <div style={{position:'relative'}}>
+      <div style={{position:'absolute',left:0,top:0,bottom:0,width:40,background:`linear-gradient(to right,${C.bgDeep},transparent)`,zIndex:4,pointerEvents:'none'}}/>
+      <div style={{display:'flex',gap:10,overflowX:'auto',paddingLeft:pad||16,paddingRight:pad||16,paddingBottom:8,scrollbarWidth:'none',msOverflowStyle:'none'}}>
+        {children}
+      </div>
+      <div style={{position:'absolute',right:0,top:0,bottom:0,width:40,background:`linear-gradient(to left,${C.bgDeep},transparent)`,zIndex:4,pointerEvents:'none'}}/>
     </div>
   );
 }
 
-// ─── Outline button ───────────────────────────────────────────────────────────
-function OutlineBtn({ href, children, style = {} }) {
-  return (
-    <Link href={href} style={{
-      display: 'inline-block', padding: '12px 32px', borderRadius: 10,
-      border: `1px solid ${C.border}`, color: C.textSoft, textDecoration: 'none',
-      fontSize: 14, fontWeight: 600, transition: 'all 0.2s', ...style,
-    }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = C.primaryL; e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(124,58,237,0.1)'; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textSoft; e.currentTarget.style.background = 'transparent'; }}
-    >
-      {children}
-    </Link>
-  );
-}
+export default function Page() {
+  const cRef  = useRef(null);
+  const hRef  = useRef(null);
+  const aRef  = useRef(0);
+  const [active, setActive] = useState(0);
+  const [hov,    setHov]    = useState(null);
+  const [W,      setW]      = useState(() => typeof window !== 'undefined' ? window.innerWidth : 1280);
 
-export default function HomePage() {
-  useReveal();
-  const heroScrollRef = useRef(null);
-  const featuredBosses = BOSSES.slice(0, 6);
-  const featuredHeroes = HEROES.filter(h => h.rank === 'S' || h.sovereign).slice(0, 8);
+  const mob = W < 640;
+  const tab = W < 1024;
 
-  const scrollHeroes = (dir) => {
-    heroScrollRef.current?.scrollBy({ left: dir * 260, behavior: 'smooth' });
-  };
+  // Viewport width listener
+  useEffect(() => {
+    const fn = () => setW(window.innerWidth);
+    window.addEventListener('resize', fn);
+    return () => window.removeEventListener('resize', fn);
+  }, []);
+
+  // Lock body scroll
+  useEffect(() => {
+    const h = document.documentElement, b = document.body;
+    h.style.overflow='hidden'; h.style.height='100%';
+    b.style.overflow='hidden'; b.style.height='100%';
+    return () => { h.style.overflow=''; h.style.height=''; b.style.overflow=''; b.style.height=''; };
+  }, []);
+
+  // Track active section via scroll position
+  useEffect(() => {
+    const el = cRef.current; if (!el) return;
+    const fn = () => {
+      const idx = Math.min(Math.max(Math.round(el.scrollTop/el.clientHeight),0),SMETA.length-1);
+      aRef.current = idx; setActive(idx);
+    };
+    el.addEventListener('scroll', fn, {passive:true});
+    return () => el.removeEventListener('scroll', fn);
+  }, []);
+
+  // Keyboard navigation — uses ref to avoid stale closures
+  useEffect(() => {
+    const fn = e => {
+      if (e.key==='ArrowDown'||e.key==='PageDown') { e.preventDefault(); go(Math.min(aRef.current+1,SMETA.length-1)); }
+      if (e.key==='ArrowUp'  ||e.key==='PageUp')   { e.preventDefault(); go(Math.max(aRef.current-1,0)); }
+    };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+  }, []);
+
+  const go      = i => cRef.current?.scrollTo({top:i*(cRef.current?.clientHeight||window.innerHeight),behavior:'smooth'});
+  const scrollH = d => hRef.current?.scrollBy({left:d*260,behavior:'smooth'});
+
+  const fList   = Object.values(FACTIONS);
+  const sBosses = BOSSES.slice(0,5);
+  const sHeroes = HEROES.filter(h=>h.rank==='S'||h.sovereign).slice(0,12);
+
+  // Section shell
+  const sec = (bg,extra={}) => ({
+    height:'100vh',scrollSnapAlign:'start',overflow:'hidden',
+    position:'relative',background:bg,...extra,
+  });
+
+  const px = mob ? 'clamp(16px,4vw,24px)' : 'clamp(20px,5vw,60px)';
+
+  // Shared outline button
+  const ObtnStyle = {padding: mob?'9px 18px':'10px 24px',clipPath:ch(7),background:'rgba(56,189,248,.05)',color:C.textSoft,fontSize:12,fontWeight:600,border:'1px solid rgba(56,189,248,.22)',transition:'all .2s',display:'inline-block'};
+  const ObtnHov = e=>{e.currentTarget.style.background='rgba(56,189,248,.14)';e.currentTarget.style.borderColor='rgba(56,189,248,.65)';e.currentTarget.style.color='#fff';};
+  const ObtnOut = e=>{e.currentTarget.style.background='rgba(56,189,248,.05)';e.currentTarget.style.borderColor='rgba(56,189,248,.22)';e.currentTarget.style.color=C.textSoft;};
 
   return (
     <>
-      <Nav />
+      <Nav/>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          HERO SECTION
-      ══════════════════════════════════════════════════════════════════════ */}
-      <section style={{
-        minHeight: '100vh', position: 'relative', overflow: 'hidden',
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        background: `
-          radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,58,237,0.28), transparent),
-          radial-gradient(ellipse 60% 80% at 20% 50%, rgba(219,39,119,0.12), transparent),
-          radial-gradient(ellipse 50% 70% at 80% 60%, rgba(0,180,216,0.08), transparent),
-          ${C.bgDeep}`,
+      {/* dvh support + scrollbar hide + mobile utilities */}
+      <style>{`
+        #fp,:root{scroll-behavior:smooth}
+        #fp{-webkit-overflow-scrolling:touch}
+        #fp::-webkit-scrollbar{display:none}
+        #fp{-ms-overflow-style:none;scrollbar-width:none}
+        @supports(height:100dvh){#fp,#fp>section{height:100dvh!important}}
+        .hs::-webkit-scrollbar{display:none}
+      `}</style>
+
+      {/* ════════════════════════════════════
+          FULL-PAGE SCROLL CONTAINER
+      ════════════════════════════════════ */}
+      <div id="fp" ref={cRef} style={{
+        position:'fixed',inset:0,
+        overflowY:'scroll',
+        scrollSnapType:'y mandatory',
+        zIndex:1,
       }}>
-        {/* Dot-grid background overlay */}
-        <div style={{
-          position: 'absolute', inset: 0, pointerEvents: 'none',
-          backgroundImage: 'radial-gradient(circle, rgba(167,139,250,0.07) 1px, transparent 1px)',
-          backgroundSize: '38px 38px',
-        }} />
 
-        {/* Ambient particles */}
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
-          {[...Array(18)].map((_, i) => (
-            <div key={i} style={{
-              position: 'absolute',
-              width: (i % 3 + 1) * 2 + 'px', height: (i % 3 + 1) * 2 + 'px',
-              borderRadius: '50%',
-              background: i % 3 === 0 ? C.primaryL : i % 3 === 1 ? C.secondary : '#00B4D8',
-              left: (i * 5.7) % 100 + '%', top: (i * 7.3) % 100 + '%',
-              opacity: 0.35, animation: `floatY ${3 + (i % 4)}s ease-in-out ${i * 0.4}s infinite`,
-            }} />
-          ))}
-        </div>
-
-        {/* Main 3-column grid */}
-        <div style={{
-          width: '100%', maxWidth: 1400, margin: '0 auto', flex: 1,
-          padding: '100px clamp(20px, 5vw, 60px) 60px',
-          display: 'grid', gridTemplateColumns: '1fr clamp(300px, 38vw, 520px) 1fr',
-          alignItems: 'center', gap: 32, position: 'relative', zIndex: 2,
-        }}>
-          {/* Left hero cards */}
-          <div style={{ display: 'flex', gap: 14, justifyContent: 'flex-end', alignItems: 'center' }}>
-            <FloatingCard hero={SOVEREIGN_HEROES[0]} delay={0} offset={-20} />
-            <FloatingCard hero={SOVEREIGN_HEROES[1]} delay={1.2} offset={20} />
-          </div>
-
-          {/* Center content */}
-          <div style={{ textAlign: 'center' }}>
-            {/* Faction orb pills */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginBottom: 32, flexWrap: 'wrap' }}>
-              {Object.values(FACTIONS).map(f => (
-                <div key={f.name} title={f.name} style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  background: `${f.color}14`, border: `1px solid ${f.color}40`,
-                  borderRadius: 20, padding: '4px 10px',
-                }}>
-                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: f.color, boxShadow: `0 0 7px ${f.color}` }} />
-                  <span style={{ fontSize: 9, fontWeight: 700, color: f.color, letterSpacing: 1.5, textTransform: 'uppercase' }}>{f.name}</span>
-                </div>
-              ))}
+        {/* ═══ 01 INTRO ═══ */}
+        <section style={sec(`
+          radial-gradient(ellipse 90% 60% at 50% -10%,rgba(124,58,237,.22),transparent),
+          radial-gradient(ellipse 50% 60% at 15% 60%,rgba(56,189,248,.06),transparent),
+          radial-gradient(ellipse 40% 50% at 85% 40%,rgba(219,39,119,.07),transparent),
+          ${C.bgDeep}
+        `,{display:'flex',alignItems:'center'})}>
+          <div style={{position:'absolute',inset:0,backgroundImage:G,backgroundSize:GS,opacity:.8,pointerEvents:'none'}}/>
+          <div style={{position:'absolute',inset:0,backgroundImage:'repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 4px)',pointerEvents:'none',zIndex:1}}/>
+          {!mob && (
+            <div style={{position:'absolute',top:0,right:0,width:'40%',height:'100%',overflow:'hidden',opacity:.3,pointerEvents:'none'}}>
+              {[60,92,124].map((t,i)=>(<div key={i} style={{position:'absolute',top:t,right:-100,width:500,height:1,background:`linear-gradient(to left,transparent,${C.accent}${i===0?'60':'30'},transparent)`,transform:'rotate(-45deg)',transformOrigin:'right center'}}/>))}
             </div>
+          )}
 
-            {/* Title */}
-            <div style={{
-              fontSize: 'clamp(52px, 7vw, 88px)', fontWeight: 900, lineHeight: 0.9,
-              background: `linear-gradient(135deg, #F0EAFF 0%, ${C.primaryL} 50%, ${C.secondary} 100%)`,
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-              letterSpacing: -2, marginBottom: 10,
-            }}>
-              AETHERIA
-            </div>
-            <div style={{
-              fontSize: 'clamp(11px, 1.6vw, 15px)', fontWeight: 700, color: C.textMuted,
-              letterSpacing: 7, textTransform: 'uppercase', marginBottom: 24,
-            }}>
-              Legends Unbound
-            </div>
-
-            {/* Divider */}
-            <div style={{
-              width: 60, height: 2, margin: '0 auto 24px',
-              background: `linear-gradient(90deg, ${C.primary}, ${C.secondary})`,
-              borderRadius: 2,
-            }} />
-
-            <p style={{
-              fontSize: 'clamp(14px, 1.4vw, 16px)', color: C.textSoft, lineHeight: 1.75,
-              maxWidth: 400, margin: '0 auto 32px',
-            }}>
-              Collect 53 legendary heroes, master Trump Card battles, and unravel
-              the fate of five factions across 75 story stages.
-            </p>
-
-            {/* CTA buttons */}
-            <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 40 }}>
-              <a href="#download" style={{
-                padding: '14px 34px', borderRadius: 10, fontSize: 15, fontWeight: 700,
-                background: `linear-gradient(135deg, ${C.primary}, ${C.secondary})`,
-                color: '#fff', textDecoration: 'none',
-                boxShadow: `0 0 28px rgba(124,58,237,0.55)`,
-                transition: 'transform 0.2s, box-shadow 0.2s',
-              }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 36px rgba(124,58,237,0.75)'; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 0 28px rgba(124,58,237,0.55)'; }}
-              >
-                Play Now — Free
-              </a>
-              <Link href="/heroes" style={{
-                padding: '14px 32px', borderRadius: 10, fontSize: 15, fontWeight: 700,
-                background: C.glass, color: C.textSoft, textDecoration: 'none',
-                border: `1px solid ${C.border}`, backdropFilter: 'blur(12px)',
-                transition: 'all 0.2s',
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = C.primaryL; e.currentTarget.style.color = '#fff'; e.currentTarget.style.background = 'rgba(124,58,237,0.12)'; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.textSoft; e.currentTarget.style.background = C.glass; }}
-              >
-                View All Heroes
-              </Link>
-            </div>
-
-            {/* Stats — 4 individual glass cards */}
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-              {[
-                { val: '53+', label: 'Heroes'       },
-                { val: '5',   label: 'Factions'     },
-                { val: '75',  label: 'Stages'       },
-                { val: '200', label: 'Tower Floors' },
-              ].map((s) => (
-                <div key={s.label} style={{
-                  flex: 1, padding: '14px 6px', textAlign: 'center',
-                  background: 'rgba(255,255,255,0.05)',
-                  border: '1px solid rgba(167,139,250,0.2)',
-                  borderRadius: 12, backdropFilter: 'blur(12px)',
-                  transition: 'border-color 0.2s',
-                }}
-                  onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(167,139,250,0.5)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(167,139,250,0.2)'; }}
-                >
-                  <div style={{ fontSize: 'clamp(20px, 2.2vw, 28px)', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{s.val}</div>
-                  <div style={{ fontSize: 10, color: C.textMuted, fontWeight: 600, marginTop: 5, letterSpacing: 0.5 }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Right hero cards */}
-          <div style={{ display: 'flex', gap: 14, justifyContent: 'flex-start', alignItems: 'center' }}>
-            <FloatingCard hero={SOVEREIGN_HEROES[2]} delay={0.6} offset={20} />
-            <FloatingCard hero={SOVEREIGN_HEROES[3]} delay={1.8} offset={-20} />
-          </div>
-        </div>
-
-        {/* Scroll-down indicator */}
-        <div style={{
-          position: 'relative', zIndex: 2, paddingBottom: 32,
-          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6,
-          animation: 'scrollBounce 2s ease-in-out infinite',
-        }}>
-          <span style={{ fontSize: 10, color: C.textMuted, letterSpacing: 2, fontWeight: 600, textTransform: 'uppercase' }}>Scroll</span>
           <div style={{
-            width: 1, height: 36,
-            background: `linear-gradient(to bottom, rgba(167,139,250,0.6), transparent)`,
-          }} />
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          SOVEREIGN HEROES
-      ══════════════════════════════════════════════════════════════════════ */}
-      <section style={{ padding: 'clamp(60px,8vw,120px) clamp(20px,5vw,60px)', background: C.bgBase, position: 'relative', overflow: 'hidden' }}>
-        {/* Subtle background glow */}
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 600, height: 300, borderRadius: '50%', background: 'rgba(124,58,237,0.06)', filter: 'blur(80px)', pointerEvents: 'none' }} />
-
-        <div style={{ maxWidth: 1400, margin: '0 auto', position: 'relative' }}>
-          <div className="reveal" style={{ textAlign: 'center', marginBottom: 56 }}>
-            <SectionLabel>Sovereign Heroes</SectionLabel>
-            <h2 style={{ fontSize: 'clamp(28px,4vw,48px)', fontWeight: 900, color: C.text, margin: '0 0 14px' }}>
-              Rulers of Five Factions
-            </h2>
-            <p style={{ fontSize: 15, color: C.textSoft, maxWidth: 520, margin: '0 auto', lineHeight: 1.75 }}>
-              Each faction has one sovereign — chosen by destiny, born of catastrophe, or forged in the abyss itself.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: 24, justifyContent: 'center', flexWrap: 'wrap' }}>
-            {SOVEREIGN_HEROES.map((hero, i) => (
-              <div key={hero.id} className="reveal" style={{ transitionDelay: `${i * 0.1}s` }}>
-                <Link href={`/heroes?faction=${hero.faction}`} style={{ textDecoration: 'none', display: 'block' }}>
-                  <div style={{ transition: 'transform 0.3s' }}
-                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-10px) scale(1.02)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.transform = ''; }}
-                  >
-                    <HeroCard hero={hero} width={220} />
-                  </div>
-                  <div style={{ textAlign: 'center', marginTop: 14 }}>
-                    <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', letterSpacing: 0.5 }}>{hero.name}</div>
-                    <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{hero.faction}</div>
-                  </div>
-                </Link>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ textAlign: 'center', marginTop: 52 }}>
-            <OutlineBtn href="/heroes">View All 53 Heroes →</OutlineBtn>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          THE FIVE FACTIONS
-      ══════════════════════════════════════════════════════════════════════ */}
-      <section style={{ padding: 'clamp(60px,8vw,120px) clamp(20px,5vw,60px)', background: C.bgDeep }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-          <div className="reveal" style={{ textAlign: 'center', marginBottom: 56 }}>
-            <SectionLabel>World of Aetheria</SectionLabel>
-            <h2 style={{ fontSize: 'clamp(28px,4vw,48px)', fontWeight: 900, color: C.text, margin: '0 0 14px' }}>
-              The Five Factions
-            </h2>
-            <p style={{ fontSize: 15, color: C.textSoft, maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
-              Five ancient powers shape the fate of Aetheria. Choose your allegiance.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
-            {Object.values(FACTIONS).map((f, i) => {
-              const count = HEROES.filter(h => h.faction === f.name).length;
-              return (
-                <Link key={f.name} href={`/heroes?faction=${f.name}`} style={{ textDecoration: 'none' }}>
-                  <div className="reveal" style={{ transitionDelay: `${i * 0.08}s`, height: '100%' }}>
-                    <div style={{
-                      background: `linear-gradient(145deg, rgba(0,0,0,0.55) 0%, ${f.color}12 100%)`,
-                      border: `1px solid ${f.color}38`,
-                      borderRadius: 18, padding: '28px 22px',
-                      transition: 'all 0.3s', cursor: 'pointer',
-                      position: 'relative', overflow: 'hidden', height: '100%',
-                    }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.borderColor = f.color + '88';
-                        e.currentTarget.style.transform = 'translateY(-5px)';
-                        e.currentTarget.style.boxShadow = `0 16px 48px ${f.color}28`;
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.borderColor = f.color + '38';
-                        e.currentTarget.style.transform = '';
-                        e.currentTarget.style.boxShadow = '';
-                      }}
-                    >
-                      {/* Background glow orb */}
-                      <div style={{
-                        position: 'absolute', top: -30, right: -30, width: 120, height: 120,
-                        borderRadius: '50%', background: f.color, opacity: 0.07, filter: 'blur(40px)',
-                        pointerEvents: 'none',
-                      }} />
-
-                      {/* Faction icon — bigger and more prominent */}
-                      <div style={{
-                        width: 64, height: 64, borderRadius: 14,
-                        background: `${f.color}18`, border: `1px solid ${f.color}45`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        marginBottom: 18, overflow: 'hidden',
-                      }}>
-                        <img src={`/assets/faction/${f.name}.png`} alt={f.name}
-                          style={{ width: 46, height: 46, objectFit: 'contain' }} />
-                      </div>
-
-                      <div style={{ fontSize: 17, fontWeight: 900, color: f.color, letterSpacing: 0.5, marginBottom: 4 }}>{f.name}</div>
-                      <div style={{ fontSize: 11, color: C.textMuted, letterSpacing: 1.5, fontWeight: 600, textTransform: 'uppercase', marginBottom: 14 }}>{f.element} Element</div>
-
-                      <p style={{ fontSize: 13, color: C.textSoft, lineHeight: 1.65, marginBottom: 20 }}>
-                        {f.lore.slice(0, 110)}...
-                      </p>
-
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{
-                          background: `${f.color}20`, border: `1px solid ${f.color}40`,
-                          borderRadius: 20, padding: '4px 12px',
-                          fontSize: 11, fontWeight: 700, color: f.color,
-                        }}>
-                          {count} Heroes
-                        </div>
-                        <span style={{ fontSize: 12, color: C.textMuted, fontWeight: 600 }}>Explore →</span>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          FEATURED HEROES SCROLL
-      ══════════════════════════════════════════════════════════════════════ */}
-      <section style={{ padding: 'clamp(60px,8vw,120px) 0', background: C.bgBase, overflow: 'hidden' }}>
-        <div style={{ padding: '0 clamp(20px,5vw,60px)', marginBottom: 36 }}>
-          <div className="reveal" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 16 }}>
-            <div>
-              <SectionLabel>Hero Collection</SectionLabel>
-              <h2 style={{ fontSize: 'clamp(26px,3.5vw,44px)', fontWeight: 900, color: C.text, margin: 0 }}>
-                Legendary Heroes
-              </h2>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <Link href="/heroes" style={{ fontSize: 13, color: C.textSoft, textDecoration: 'none', fontWeight: 600, marginRight: 8 }}>
-                All 53 heroes →
-              </Link>
-              <button className="scroll-arrow" onClick={() => scrollHeroes(-1)} aria-label="Scroll left">&#8249;</button>
-              <button className="scroll-arrow" onClick={() => scrollHeroes(1)} aria-label="Scroll right">&#8250;</button>
-            </div>
-          </div>
-        </div>
-
-        {/* Scroll container with edge fades */}
-        <div style={{ position: 'relative' }}>
-          <div style={{
-            position: 'absolute', left: 0, top: 0, bottom: 16, width: 'clamp(20px,5vw,60px)',
-            background: `linear-gradient(to right, ${C.bgBase}, transparent)`,
-            zIndex: 4, pointerEvents: 'none',
-          }} />
-          <div ref={heroScrollRef} style={{
-            display: 'flex', gap: 20,
-            paddingLeft: 'clamp(20px,5vw,60px)', paddingRight: 'clamp(20px,5vw,60px)',
-            overflowX: 'auto', paddingBottom: 16,
-            scrollbarWidth: 'thin', scrollbarColor: `${C.primary} transparent`,
+            width:'100%',maxWidth:1440,margin:'0 auto',
+            padding:`${mob?'72px':tab?'90px':'80px'} ${px} 0`,
+            display:'grid',
+            gridTemplateColumns: mob ? '1fr' : '1fr 1fr',
+            alignItems:'center',gap: mob ? 0 : 40,
+            position:'relative',zIndex:2,height:'100%',
           }}>
-            {featuredHeroes.map((hero) => (
-              <div key={hero.id} style={{ flexShrink: 0, transition: 'transform 0.3s' }}
-                onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-8px)'; }}
-                onMouseLeave={e => { e.currentTarget.style.transform = ''; }}
-              >
-                <HeroCard hero={hero} width={200} />
-              </div>
-            ))}
-          </div>
-          <div style={{
-            position: 'absolute', right: 0, top: 0, bottom: 16, width: 'clamp(20px,5vw,60px)',
-            background: `linear-gradient(to left, ${C.bgBase}, transparent)`,
-            zIndex: 4, pointerEvents: 'none',
-          }} />
-        </div>
-      </section>
 
-      {/* ══════════════════════════════════════════════════════════════════════
-          ENEMIES SHOWCASE
-      ══════════════════════════════════════════════════════════════════════ */}
-      <section style={{ padding: 'clamp(60px,8vw,120px) clamp(20px,5vw,60px)', background: C.bgDeep }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-          <div className="reveal" style={{ textAlign: 'center', marginBottom: 56 }}>
-            <SectionLabel>Story Mode</SectionLabel>
-            <h2 style={{ fontSize: 'clamp(28px,4vw,48px)', fontWeight: 900, color: C.text, margin: '0 0 14px' }}>
-              Face Your Enemies
-            </h2>
-            <p style={{ fontSize: 15, color: C.textSoft, maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
-              25 chapters. 75 stages. Each chapter ends with a boss that defines an era.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
-            {featuredBosses.map((boss, i) => {
-              const fc = FACTIONS[boss.faction];
-              return (
-                <div key={boss.chapter} className="reveal" style={{ transitionDelay: `${i * 0.08}s` }}>
-                  <div style={{
-                    background: 'rgba(0,0,0,0.5)', border: `1px solid ${fc.color}28`,
-                    borderRadius: 14, overflow: 'hidden', transition: 'all 0.3s', cursor: 'pointer',
-                  }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.borderColor = fc.color + '70';
-                      e.currentTarget.style.transform = 'translateY(-5px)';
-                      e.currentTarget.style.boxShadow = `0 16px 40px ${fc.color}22`;
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.borderColor = fc.color + '28';
-                      e.currentTarget.style.transform = '';
-                      e.currentTarget.style.boxShadow = '';
-                    }}
-                  >
-                    <div style={{ position: 'relative', aspectRatio: '4/5', overflow: 'hidden' }}>
-                      <img src={boss.image} alt={boss.name}
-                        style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s' }}
-                        onError={e => { e.currentTarget.style.display = 'none'; }}
-                        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.transform = ''; }}
-                      />
-                      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 55%)' }} />
-                      {/* Chapter badge */}
-                      <div style={{
-                        position: 'absolute', top: 10, left: 10,
-                        background: `${fc.color}22`, border: `1px solid ${fc.color}66`,
-                        backdropFilter: 'blur(8px)',
-                        borderRadius: 7, padding: '4px 10px',
-                        fontSize: 10, fontWeight: 800, color: fc.color, letterSpacing: 1.5,
-                      }}>
-                        CH.{boss.chapter}
-                      </div>
-                    </div>
-                    <div style={{ padding: '14px 14px 18px' }}>
-                      <div style={{ fontSize: 10, color: C.textMuted, letterSpacing: 2, marginBottom: 5, fontWeight: 700, textTransform: 'uppercase' }}>{boss.title}</div>
-                      <div style={{ fontSize: 14, fontWeight: 900, color: '#fff', marginBottom: 8 }}>{boss.name}</div>
-                      <p style={{ fontSize: 11, color: C.textSoft, lineHeight: 1.55, margin: 0 }}>{boss.desc.slice(0, 80)}...</p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div style={{ textAlign: 'center', marginTop: 52 }}>
-            <OutlineBtn href="/enemies">All Chapters &amp; Enemies →</OutlineBtn>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          WORLD MAP
-      ══════════════════════════════════════════════════════════════════════ */}
-      <section style={{ padding: 'clamp(60px,8vw,120px) clamp(20px,5vw,60px)', background: C.bgBase }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-          <div className="reveal" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 60, alignItems: 'center' }}>
-            <div>
-              <SectionLabel>The World</SectionLabel>
-              <h2 style={{ fontSize: 'clamp(28px,4vw,48px)', fontWeight: 900, color: C.text, margin: '0 0 18px' }}>
-                The Realm of Aetheria
-              </h2>
-              <p style={{ fontSize: 15, color: C.textSoft, lineHeight: 1.8, marginBottom: 28 }}>
-                Five factions carved their dominion from raw elemental force — volcanic highlands, frozen tundras,
-                radiant spires, ancient forests, and abyss-scarred wastes.
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 36 }}>
-                {Object.values(FACTIONS).map(f => (
-                  <div key={f.name} style={{
-                    display: 'flex', alignItems: 'center', gap: 12,
-                    padding: '10px 14px', borderRadius: 10,
-                    background: `${f.color}0a`, border: `1px solid ${f.color}25`,
-                    transition: 'all 0.2s',
-                  }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = f.color + '55'; e.currentTarget.style.background = `${f.color}15`; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = f.color + '25'; e.currentTarget.style.background = `${f.color}0a`; }}
-                  >
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: f.color, boxShadow: `0 0 8px ${f.color}`, flexShrink: 0 }} />
-                    <div>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: f.color }}>{f.name}</span>
-                      <span style={{ fontSize: 12, color: C.textMuted }}> — {f.element} territory</span>
-                    </div>
+            {/* TEXT */}
+            <div style={{textAlign:mob?'center':'left',display:'flex',flexDirection:'column',alignItems:mob?'center':'flex-start'}}>
+              {/* faction pills */}
+              <div style={{display:'flex',gap:6,marginBottom:mob?16:28,flexWrap:'wrap',justifyContent:mob?'center':'flex-start'}}>
+                {fList.map(f=>(
+                  <div key={f.name} style={{clipPath:ch(4),background:`${f.color}10`,border:`1px solid ${f.color}35`,padding:'3px 8px',display:'flex',alignItems:'center',gap:4}}>
+                    <div style={{width:4,height:4,background:f.color,boxShadow:`0 0 6px ${f.color}`,flexShrink:0}}/>
+                    <span style={{fontSize:7,fontWeight:700,color:f.color,letterSpacing:1.5,textTransform:'uppercase'}}>{f.name}</span>
                   </div>
                 ))}
               </div>
 
-              <Link href="/world" style={{
-                display: 'inline-block', padding: '13px 28px', borderRadius: 10,
-                background: `linear-gradient(135deg, ${C.primary}35, ${C.secondary}25)`,
-                border: `1px solid ${C.border}`, color: C.text,
-                textDecoration: 'none', fontSize: 14, fontWeight: 700,
-                transition: 'all 0.2s',
-              }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = C.primaryL; e.currentTarget.style.background = `linear-gradient(135deg, ${C.primary}50, ${C.secondary}40)`; }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = `linear-gradient(135deg, ${C.primary}35, ${C.secondary}25)`; }}
-              >
-                Explore the World Map →
-              </Link>
-            </div>
-
-            <div style={{
-              position: 'relative', borderRadius: 18, overflow: 'hidden',
-              border: `1px solid ${C.border}`,
-              boxShadow: `0 24px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(167,139,250,0.08)`,
-            }}>
-              <img src="/assets/worldMap/world-map.png" alt="World Map of Aetheria"
-                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              />
-              <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(135deg, rgba(124,58,237,0.08), transparent 60%)' }} />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          LORE STATS
-      ══════════════════════════════════════════════════════════════════════ */}
-      <section style={{ padding: 'clamp(60px,8vw,120px) clamp(20px,5vw,60px)', background: C.bgDeep }}>
-        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-          <div className="reveal" style={{ textAlign: 'center', marginBottom: 56 }}>
-            <SectionLabel>Story Mode</SectionLabel>
-            <h2 style={{ fontSize: 'clamp(28px,4vw,48px)', fontWeight: 900, color: C.text, margin: '0 0 14px' }}>25 Chapters of Lore</h2>
-            <p style={{ fontSize: 15, color: C.textSoft, maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
-              Every stage advances a story that spans dimensional collapse, sovereign battles, and the fate of five civilizations.
-            </p>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 16 }}>
-            {[
-              { val: '25', label: 'Chapters',             color: C.primary,   sub: 'Epic story arcs'       },
-              { val: '75', label: 'Story Stages',         color: C.secondary, sub: 'Unique encounters'     },
-              { val: '5',  label: 'Sovereign Story Arcs', color: '#D97706',   sub: 'Legendary paths'       },
-              { val: '∞', label: 'Endless Tower Floors', color: '#00B4D8', sub: 'Infinite challenge' },
-            ].map((s, i) => (
-              <div key={s.label} className="reveal" style={{ transitionDelay: `${i * 0.1}s` }}>
-                <div style={{
-                  background: `${s.color}0d`, border: `1px solid ${s.color}28`,
-                  borderRadius: 18, padding: '36px 24px', textAlign: 'center',
-                  transition: 'all 0.3s', position: 'relative', overflow: 'hidden',
-                }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = s.color + '55';
-                    e.currentTarget.style.boxShadow = `0 12px 40px ${s.color}18`;
-                    e.currentTarget.style.transform = 'translateY(-4px)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = s.color + '28';
-                    e.currentTarget.style.boxShadow = '';
-                    e.currentTarget.style.transform = '';
-                  }}
-                >
-                  {/* Background glow */}
-                  <div style={{
-                    position: 'absolute', bottom: -20, right: -20, width: 80, height: 80,
-                    borderRadius: '50%', background: s.color, opacity: 0.07, filter: 'blur(30px)',
-                    pointerEvents: 'none',
-                  }} />
-                  <div style={{
-                    fontSize: 54, fontWeight: 900, color: s.color, lineHeight: 1, marginBottom: 10,
-                    textShadow: `0 0 30px ${s.color}55`,
-                  }}>{s.val}</div>
-                  <div style={{ fontSize: 14, color: C.text, fontWeight: 700, marginBottom: 4 }}>{s.label}</div>
-                  <div style={{ fontSize: 11, color: C.textMuted }}>{s.sub}</div>
-                </div>
+              <div style={{fontSize:`clamp(${mob?'42px':'52px'},7vw,96px)`,fontWeight:900,lineHeight:.85,background:`linear-gradient(160deg,#fff 0%,${C.primaryL} 45%,${C.secondary} 100%)`,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',letterSpacing:-4,marginBottom:8}}>
+                AETHERIA
               </div>
-            ))}
-          </div>
-
-          <div style={{ textAlign: 'center', marginTop: 52 }}>
-            <OutlineBtn href="/lore">Read the Full Story →</OutlineBtn>
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          DOWNLOAD
-      ══════════════════════════════════════════════════════════════════════ */}
-      <section id="download" style={{
-        padding: 'clamp(80px,10vw,140px) clamp(20px,5vw,60px)',
-        background: `
-          radial-gradient(ellipse 80% 60% at 50% 110%, rgba(124,58,237,0.22), transparent),
-          radial-gradient(ellipse 60% 60% at 85% 40%, rgba(219,39,119,0.1), transparent),
-          ${C.bgBase}`,
-        textAlign: 'center', position: 'relative', overflow: 'hidden',
-      }}>
-        {/* Giant watermark text */}
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          pointerEvents: 'none', overflow: 'hidden',
-        }}>
-          <div style={{
-            fontSize: 'clamp(80px, 18vw, 240px)', fontWeight: 900,
-            color: 'rgba(124,58,237,0.04)', letterSpacing: -8, whiteSpace: 'nowrap',
-            userSelect: 'none',
-          }}>AETHERIA</div>
-        </div>
-
-        <div className="reveal" style={{ maxWidth: 620, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          {/* "Free" badge */}
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 20,
-            background: 'rgba(5,150,105,0.15)', border: '1px solid rgba(5,150,105,0.35)',
-            borderRadius: 20, padding: '5px 14px',
-          }}>
-            <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#34D399', boxShadow: '0 0 7px #34D399', animation: 'pulse 2s infinite' }} />
-            <span style={{ fontSize: 10, fontWeight: 800, color: '#34D399', letterSpacing: 2.5, textTransform: 'uppercase' }}>Free to Play</span>
-          </div>
-
-          <SectionLabel>Available Now</SectionLabel>
-          <h2 style={{
-            fontSize: 'clamp(30px,5vw,60px)', fontWeight: 900, color: C.text, margin: '0 0 14px',
-            background: `linear-gradient(135deg, #F0EAFF, ${C.primaryL}, ${C.secondary})`,
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          }}>
-            Begin Your Legend
-          </h2>
-          <p style={{ fontSize: 16, color: C.textSoft, lineHeight: 1.75, marginBottom: 32 }}>
-            Free to play. Cloud save included. 53 heroes waiting to be collected.
-          </p>
-
-          {/* Feature pills */}
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 40 }}>
-            {['53 Heroes', 'Cloud Save', 'No Pay-to-Win', '75 Stages', '200+ Tower Floors'].map(feat => (
-              <div key={feat} style={{
-                padding: '6px 14px', borderRadius: 20,
-                background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.28)',
-                fontSize: 12, fontWeight: 600, color: C.textSoft,
-              }}>{feat}</div>
-            ))}
-          </div>
-
-          {/* Store buttons */}
-          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-            {[
-              { store: 'App Store',   icon: '📱', sub: 'Download on the' },
-              { store: 'Google Play', icon: '▶',       sub: 'Get it on'       },
-            ].map(({ store, icon, sub }) => (
-              <a key={store} href="#download" style={{
-                display: 'flex', alignItems: 'center', gap: 14,
-                padding: '16px 28px', borderRadius: 14,
-                background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.15)',
-                color: '#fff', textDecoration: 'none', minWidth: 190,
-                transition: 'all 0.25s', backdropFilter: 'blur(12px)',
-              }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
-                  e.currentTarget.style.transform = 'translateY(-3px)';
-                  e.currentTarget.style.boxShadow = '0 12px 36px rgba(0,0,0,0.35)';
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.3)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
-                  e.currentTarget.style.transform = '';
-                  e.currentTarget.style.boxShadow = '';
-                  e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
-                }}
-              >
-                <span style={{ fontSize: 30 }}>{icon}</span>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', letterSpacing: 0.5 }}>{sub}</div>
-                  <div style={{ fontSize: 18, fontWeight: 800 }}>{store}</div>
-                </div>
-              </a>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ══════════════════════════════════════════════════════════════════════
-          FOOTER
-      ══════════════════════════════════════════════════════════════════════ */}
-      <footer style={{
-        padding: 'clamp(40px,6vw,72px) clamp(20px,5vw,60px) 28px',
-        background: C.bgDeep, position: 'relative', overflow: 'hidden',
-      }}>
-        {/* Faction rainbow top border */}
-        <div style={{
-          position: 'absolute', top: 0, left: 0, right: 0, height: 2,
-          background: 'linear-gradient(90deg, #FF4500 0%, #D4A017 25%, #2ECC71 50%, #00B4D8 75%, #9B59B6 100%)',
-        }} />
-
-        <div style={{ maxWidth: 1400, margin: '0 auto' }}>
-          {/* 3-column grid */}
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: 48, marginBottom: 48,
-          }}>
-            {/* Brand */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-                <div style={{
-                  width: 34, height: 34, borderRadius: 8,
-                  background: 'linear-gradient(135deg, #7C3AED, #DB2777)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 15, fontWeight: 900, color: '#fff',
-                  boxShadow: '0 0 12px rgba(124,58,237,0.45)',
-                }}>A</div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 900, color: C.text, letterSpacing: 1 }}>AETHERIA</div>
-                  <div style={{ fontSize: 8, color: C.textMuted, letterSpacing: 2.5, fontWeight: 600 }}>LEGENDS UNBOUND</div>
-                </div>
+              <div style={{width:mob?56:72,height:1,background:`linear-gradient(90deg,transparent,${C.accent},transparent)`,animation:'accentPulse 3s ease-in-out infinite',marginBottom:10}}/>
+              <div style={{fontSize:'clamp(9px,1.4vw,12px)',fontWeight:700,color:C.textMuted,letterSpacing:mob?5:7,textTransform:'uppercase',marginBottom:mob?14:20}}>
+                Legends Unbound
               </div>
-              <p style={{ fontSize: 13, color: C.textMuted, lineHeight: 1.65, maxWidth: 220 }}>
-                The ultimate turn-based hero card game. Collect, battle, and become a legend.
-              </p>
+
+              {!mob && (
+                <p style={{fontSize:'clamp(13px,1.2vw,15px)',color:C.textSoft,lineHeight:1.8,maxWidth:460,marginBottom:28}}>
+                  Collect 53 legendary heroes across five factions. Master Trump Card battles. Unravel the fate of Aetheria.
+                </p>
+              )}
+
+              {/* CTAs */}
+              <div style={{display:'flex',gap:10,flexWrap:'wrap',justifyContent:mob?'center':'flex-start',marginBottom:mob?20:40}}>
+                <button onClick={()=>go(7)} style={{
+                  padding:mob?'12px 24px':'14px 34px',fontSize:13,fontWeight:700,
+                  clipPath:ch(10),background:`linear-gradient(135deg,${C.primary},${C.secondary})`,
+                  color:'#fff',border:'none',cursor:'pointer',
+                  boxShadow:`0 0 28px rgba(124,58,237,.5)`,transition:'all .2s',
+                }}
+                  onMouseEnter={e=>{e.currentTarget.style.boxShadow='0 8px 40px rgba(124,58,237,.75)';e.currentTarget.style.transform='translateY(-2px)';}}
+                  onMouseLeave={e=>{e.currentTarget.style.boxShadow=`0 0 28px rgba(124,58,237,.5)`;e.currentTarget.style.transform='';}}
+                >Play Now — Free</button>
+                <button onClick={()=>go(3)} style={{
+                  padding:mob?'11px 20px':'13px 28px',fontSize:13,fontWeight:600,
+                  clipPath:ch(10),background:'rgba(56,189,248,.06)',
+                  color:C.textSoft,border:'1px solid rgba(56,189,248,.25)',cursor:'pointer',transition:'all .2s',
+                }}
+                  onMouseEnter={e=>{e.currentTarget.style.background='rgba(56,189,248,.14)';e.currentTarget.style.borderColor='rgba(56,189,248,.6)';e.currentTarget.style.color='#fff';}}
+                  onMouseLeave={e=>{e.currentTarget.style.background='rgba(56,189,248,.06)';e.currentTarget.style.borderColor='rgba(56,189,248,.25)';e.currentTarget.style.color=C.textSoft;}}
+                >View Heroes</button>
+              </div>
+
+              {/* Stats — 2×2 on mobile, single row on desktop */}
+              {mob ? (
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',width:'100%',border:`1px solid ${C.border}`}}>
+                  {[{v:'53+',l:'Heroes'},{v:'5',l:'Factions'},{v:'75',l:'Stages'},{v:'200',l:'Floors'}].map((s,i)=>(
+                    <div key={s.l} style={{padding:'12px 4px',textAlign:'center',borderRight:i%2===0?`1px solid ${C.border}`:'none',borderBottom:i<2?`1px solid ${C.border}`:'none'}}>
+                      <div style={{fontSize:'clamp(20px,5vw,26px)',fontWeight:900,color:C.accent,lineHeight:1,letterSpacing:-1}}>{s.v}</div>
+                      <div style={{fontSize:8,color:C.textMuted,fontWeight:600,marginTop:3,letterSpacing:1.5,textTransform:'uppercase'}}>{s.l}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{display:'flex',borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`,width:'100%'}}>
+                  {[{v:'53+',l:'Heroes'},{v:'5',l:'Factions'},{v:'75',l:'Stages'},{v:'200',l:'Tower Floors'}].map((s,i)=>(
+                    <div key={s.l} style={{flex:1,padding:'16px 4px',textAlign:'center',borderRight:i<3?`1px solid ${C.border}`:'none'}}>
+                      <div style={{fontSize:'clamp(22px,2.5vw,30px)',fontWeight:900,color:C.accent,lineHeight:1,letterSpacing:-1}}>{s.v}</div>
+                      <div style={{fontSize:9,color:C.textMuted,fontWeight:600,marginTop:4,letterSpacing:2,textTransform:'uppercase'}}>{s.l}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Navigation */}
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, letterSpacing: 2.5, marginBottom: 18, textTransform: 'uppercase' }}>Navigate</div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {['Heroes', 'Enemies', 'Lore', 'World'].map(l => (
-                  <Link key={l} href={`/${l.toLowerCase()}`} style={{
-                    fontSize: 14, color: C.textSoft, fontWeight: 600, transition: 'color 0.2s',
+            {/* HERO ART — desktop/tablet only */}
+            {!mob && (
+              <div style={{display:'flex',gap:tab?12:16,justifyContent:'center',alignItems:'center',height:'100%',paddingBottom:60}}>
+                {SOVEREIGN_HEROES.slice(0,tab?2:3).map((h,i)=>(
+                  <div key={h.id} style={{
+                    animation:`floatY ${4+i*.5}s ease-in-out ${i*1.2}s infinite`,
+                    transform:`translateY(${[-20,0,-10][i]||0}px)`,
+                    filter:'drop-shadow(0 32px 56px rgba(0,0,0,.8))',transition:'filter .3s',
                   }}
-                    onMouseEnter={e => { e.currentTarget.style.color = '#fff'; }}
-                    onMouseLeave={e => { e.currentTarget.style.color = C.textSoft; }}
+                    onMouseEnter={e=>{e.currentTarget.style.filter='drop-shadow(0 32px 56px rgba(0,0,0,.8)) brightness(1.12)';}}
+                    onMouseLeave={e=>{e.currentTarget.style.filter='drop-shadow(0 32px 56px rgba(0,0,0,.8))';}}
                   >
-                    {l}
+                    <HeroCard hero={h} width={tab?(i===0?170:150):(i===1?205:168)} compact={false}/>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* scroll nudge */}
+          <div onClick={()=>go(1)} style={{position:'absolute',bottom:mob?20:28,left:'50%',transform:'translateX(-50%)',display:'flex',flexDirection:'column',alignItems:'center',gap:6,animation:'scrollBounce 2.2s ease-in-out infinite',zIndex:2,cursor:'pointer'}}>
+            <span style={{fontSize:8,color:C.textMuted,letterSpacing:3,fontWeight:700,textTransform:'uppercase'}}>Scroll</span>
+            <div style={{width:1,height:24,background:`linear-gradient(to bottom,${C.accent}80,transparent)`}}/>
+          </div>
+        </section>
+
+        {/* ═══ 02 SOVEREIGN HEROES ═══ */}
+        <section style={sec(`radial-gradient(ellipse 80% 50% at 50% 0%,rgba(124,58,237,.18),transparent),${C.bgBase}`,{display:'flex',flexDirection:'column',justifyContent:'center'})}>
+          <div style={{position:'absolute',inset:0,backgroundImage:G,backgroundSize:GS,opacity:.6,pointerEvents:'none'}}/>
+          {!mob && <Num n="02"/>}
+          <div style={{maxWidth:1400,margin:'0 auto',width:'100%',position:'relative',zIndex:1}}>
+            <div style={{textAlign:'center',marginBottom:mob?20:36,padding:`0 ${px}`}}>
+              <Tag>02 — Sovereign Heroes</Tag>
+              <h2 style={{fontSize:`clamp(${mob?'22px':'28px'},4vw,52px)`,fontWeight:900,color:C.text,letterSpacing:-2,margin:'0 0 8px'}}>Rulers of Five Factions</h2>
+              {!mob && <p style={{fontSize:13,color:C.textSoft,maxWidth:460,margin:'0 auto'}}>Each faction crowned one sovereign — chosen by destiny, born of catastrophe, forged in the abyss.</p>}
+            </div>
+
+            {mob ? (
+              /* mobile: horizontal scroll */
+              <HScroll pad={16}>
+                {SOVEREIGN_HEROES.map(h=>(
+                  <Link key={h.id} href={`/heroes?faction=${h.faction}`} style={{textDecoration:'none',flexShrink:0}}>
+                    <div className="tech-bracket">
+                      <HeroCard hero={h} width={150}/>
+                      <div style={{textAlign:'center',marginTop:8}}>
+                        <div style={{fontSize:11,fontWeight:800,color:'#fff'}}>{h.name}</div>
+                        <div style={{fontSize:8,color:C.textMuted,letterSpacing:2,textTransform:'uppercase',marginTop:2}}>{h.faction}</div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </HScroll>
+            ) : (
+              /* desktop/tablet: flex row */
+              <div style={{display:'flex',gap:tab?14:20,justifyContent:'center',flexWrap:'wrap',marginBottom:28,padding:`0 ${px}`}}>
+                {SOVEREIGN_HEROES.map(h=>(
+                  <Link key={h.id} href={`/heroes?faction=${h.faction}`} style={{textDecoration:'none'}}>
+                    <div className="tech-bracket" style={{transition:'transform .3s'}}
+                      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-10px) scale(1.03)';}}
+                      onMouseLeave={e=>{e.currentTarget.style.transform='';}}
+                    >
+                      <HeroCard hero={h} width={tab?165:190}/>
+                      <div style={{textAlign:'center',marginTop:10}}>
+                        <div style={{fontSize:12,fontWeight:800,color:'#fff'}}>{h.name}</div>
+                        <div style={{fontSize:9,color:C.textMuted,letterSpacing:2,textTransform:'uppercase',marginTop:2}}>{h.faction}</div>
+                      </div>
+                    </div>
                   </Link>
                 ))}
               </div>
-            </div>
+            )}
 
-            {/* Community & Legal */}
-            <div>
-              <div style={{ fontSize: 10, fontWeight: 800, color: C.textMuted, letterSpacing: 2.5, marginBottom: 18, textTransform: 'uppercase' }}>Community</div>
-              {/* Social icons */}
-              <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-                {[
-                  { label: 'Discord', icon: 'D' },
-                  { label: 'Twitter', icon: 'X' },
-                  { label: 'YouTube', icon: 'Y' },
-                ].map(s => (
-                  <a key={s.label} href="#" title={s.label} style={{
-                    width: 36, height: 36, borderRadius: 9,
-                    background: C.glass, border: `1px solid ${C.glassBorder}`,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, fontWeight: 800, color: C.textSoft,
-                    transition: 'all 0.2s',
-                  }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(124,58,237,0.2)'; e.currentTarget.style.borderColor = C.primaryL; e.currentTarget.style.color = '#fff'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = C.glass; e.currentTarget.style.borderColor = C.glassBorder; e.currentTarget.style.color = C.textSoft; }}
-                  >{s.icon}</a>
-                ))}
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {[
-                  { label: 'Privacy Policy',   href: '/privacy' },
-                  { label: 'Terms of Service', href: '#'        },
-                  { label: 'Support',          href: 'mailto:support@ziriverse.com' },
-                ].map(({ label, href }) => (
-                  <a key={label} href={href} style={{
-                    fontSize: 13, color: C.textMuted, transition: 'color 0.2s',
-                  }}
-                    onMouseEnter={e => { e.currentTarget.style.color = C.textSoft; }}
-                    onMouseLeave={e => { e.currentTarget.style.color = C.textMuted; }}
-                  >{label}</a>
-                ))}
-              </div>
+            <div style={{textAlign:'center',marginTop:mob?20:8,padding:`0 ${px}`}}>
+              <Link href="/heroes" style={ObtnStyle} onMouseEnter={ObtnHov} onMouseLeave={ObtnOut}>View All 53 Heroes →</Link>
             </div>
           </div>
+        </section>
 
-          {/* Bottom bar */}
-          <div style={{
-            borderTop: `1px solid ${C.border}`, paddingTop: 24,
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16,
-          }}>
-            <div style={{ fontSize: 12, color: C.textMuted }}>© 2025 Ziriverse. All rights reserved.</div>
-            {/* Faction color dots */}
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              {Object.values(FACTIONS).map(f => (
-                <div key={f.name} title={f.name} style={{
-                  width: 8, height: 8, borderRadius: '50%',
-                  background: f.color, opacity: 0.65,
-                  boxShadow: `0 0 5px ${f.color}`,
-                }} />
+        {/* ═══ 03 FACTIONS ═══ */}
+        <section style={sec(C.bgDeep,{display:'flex',flexDirection:'column',justifyContent:'center'})}>
+          <div style={{position:'absolute',inset:0,backgroundImage:G,backgroundSize:GS,opacity:.7,pointerEvents:'none'}}/>
+          {!mob && <Num n="03"/>}
+          <div style={{maxWidth:1400,margin:'0 auto',width:'100%',position:'relative',zIndex:1}}>
+            <div style={{marginBottom:mob?16:24,padding:`0 ${px}`,display:'flex',justifyContent:'space-between',alignItems:'flex-end',flexWrap:'wrap',gap:10}}>
+              <div>
+                <Tag>03 — World of Aetheria</Tag>
+                <h2 style={{fontSize:`clamp(${mob?'20px':'24px'},3.5vw,46px)`,fontWeight:900,color:C.text,letterSpacing:-2,margin:0}}>The Five Factions</h2>
+              </div>
+              {!mob && <Link href="/heroes" style={ObtnStyle} onMouseEnter={ObtnHov} onMouseLeave={ObtnOut}>Explore Heroes →</Link>}
+            </div>
+
+            {mob ? (
+              /* mobile: horizontal scroll strip */
+              <HScroll pad={16}>
+                {fList.map(f=>{
+                  const cnt = HEROES.filter(h=>h.faction===f.name).length;
+                  return (
+                    <Link key={f.name} href={`/heroes?faction=${f.name}`} style={{textDecoration:'none',flexShrink:0}}>
+                      <div style={{width:180,height:240,background:`linear-gradient(170deg,${C.bgCard} 0%,${f.color}15 100%)`,border:`1px solid ${f.color}35`,clipPath:ch(8),padding:'14px 12px',display:'flex',flexDirection:'column',position:'relative',overflow:'hidden'}}>
+                        <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${f.color}90,transparent)`}}/>
+                        <div style={{width:38,height:38,clipPath:ch(6),background:`${f.color}15`,border:`1px solid ${f.color}35`,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:10,overflow:'hidden',flexShrink:0}}>
+                          <img src={`/assets/faction/${f.name}.png`} alt={f.name} style={{width:26,height:26,objectFit:'contain'}}/>
+                        </div>
+                        <div style={{fontSize:13,fontWeight:900,color:f.color,marginBottom:1}}>{f.name}</div>
+                        <div style={{fontSize:8,color:C.textMuted,letterSpacing:2,fontWeight:600,textTransform:'uppercase',marginBottom:8}}>{f.element}</div>
+                        <p style={{fontSize:10,color:C.textSoft,lineHeight:1.5,flex:1,marginBottom:10}}>{f.lore.slice(0,80)}...</p>
+                        <div style={{clipPath:ch(4),background:`${f.color}18`,border:`1px solid ${f.color}38`,padding:'3px 8px',fontSize:9,fontWeight:700,color:f.color,width:'fit-content'}}>{cnt} Heroes</div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </HScroll>
+            ) : (
+              /* desktop: 5-column grid */
+              <div style={{padding:`0 ${px}`,display:'grid',gridTemplateColumns:tab?'repeat(3,1fr)':'repeat(5,1fr)',gap:10,height:tab?'auto':'clamp(300px,52vh,480px)'}}>
+                {fList.map(f=>{
+                  const cnt = HEROES.filter(h=>h.faction===f.name).length;
+                  return (
+                    <Link key={f.name} href={`/heroes?faction=${f.name}`} style={{textDecoration:'none',height:tab?280:'100%'}}>
+                      <div className="tech-bracket" style={{height:'100%',background:`linear-gradient(170deg,${C.bgCard} 0%,${f.color}10 100%)`,border:`1px solid ${f.color}28`,clipPath:ch(10),padding:'18px 14px',display:'flex',flexDirection:'column',position:'relative',overflow:'hidden',transition:'all .3s',cursor:'pointer'}}
+                        onMouseEnter={e=>{e.currentTarget.style.borderColor=f.color+'70';e.currentTarget.style.background=`linear-gradient(170deg,${C.bgCard} 0%,${f.color}20 100%)`;e.currentTarget.style.boxShadow=`0 12px 48px ${f.color}22`;e.currentTarget.style.transform='translateY(-4px)';}}
+                        onMouseLeave={e=>{e.currentTarget.style.borderColor=f.color+'28';e.currentTarget.style.background=`linear-gradient(170deg,${C.bgCard} 0%,${f.color}10 100%)`;e.currentTarget.style.boxShadow='';e.currentTarget.style.transform='';}}
+                      >
+                        <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${f.color}90,transparent)`}}/>
+                        <div style={{position:'absolute',bottom:-40,right:-40,width:120,height:120,borderRadius:'50%',background:f.color,opacity:.05,filter:'blur(40px)'}}/>
+                        <div style={{width:46,height:46,clipPath:ch(7),background:`${f.color}15`,border:`1px solid ${f.color}35`,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:12,overflow:'hidden',flexShrink:0}}>
+                          <img src={`/assets/faction/${f.name}.png`} alt={f.name} style={{width:32,height:32,objectFit:'contain'}}/>
+                        </div>
+                        <div style={{fontSize:14,fontWeight:900,color:f.color,marginBottom:2}}>{f.name}</div>
+                        <div style={{fontSize:8,color:C.textMuted,letterSpacing:2,fontWeight:600,textTransform:'uppercase',marginBottom:10}}>{f.element}</div>
+                        <p style={{fontSize:11,color:C.textSoft,lineHeight:1.6,flex:1,marginBottom:14}}>{f.lore.slice(0,100)}...</p>
+                        <div style={{clipPath:ch(5),background:`${f.color}18`,border:`1px solid ${f.color}38`,padding:'4px 10px',fontSize:10,fontWeight:700,color:f.color,width:'fit-content'}}>{cnt} Heroes</div>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ═══ 04 HEROES CAROUSEL ═══ */}
+        <section style={sec(`radial-gradient(ellipse 60% 50% at 30% 50%,rgba(124,58,237,.1),transparent),${C.bgBase}`,{display:'flex',flexDirection:'column',justifyContent:'center'})}>
+          <div style={{position:'absolute',inset:0,backgroundImage:G,backgroundSize:GS,opacity:.5,pointerEvents:'none'}}/>
+          {!mob && <Num n="04"/>}
+          <div style={{width:'100%',position:'relative',zIndex:1}}>
+            <div style={{padding:`0 ${px}`,marginBottom:mob?16:26,display:'flex',justifyContent:'space-between',alignItems:'flex-end',flexWrap:'wrap',gap:12}}>
+              <div>
+                <Tag>04 — Hero Collection</Tag>
+                <h2 style={{fontSize:`clamp(${mob?'20px':'24px'},3.5vw,46px)`,fontWeight:900,color:C.text,letterSpacing:-2,margin:0}}>Legendary Heroes</h2>
+              </div>
+              <div style={{display:'flex',alignItems:'center',gap:10}}>
+                {!mob && <Link href="/heroes" style={{fontSize:12,color:C.textMuted,fontWeight:600}}>All 53 →</Link>}
+                <button className="scroll-arrow" onClick={()=>scrollH(-1)}>&#8249;</button>
+                <button className="scroll-arrow" onClick={()=>scrollH(1)}>&#8250;</button>
+              </div>
+            </div>
+            <div style={{position:'relative'}}>
+              <div style={{position:'absolute',left:0,top:0,bottom:0,width:mob?24:60,background:`linear-gradient(to right,${C.bgBase},transparent)`,zIndex:4,pointerEvents:'none'}}/>
+              <div ref={hRef} style={{display:'flex',gap:mob?10:16,padding:`0 ${px}`,overflowX:'auto',paddingBottom:8,scrollbarWidth:'none',msOverflowStyle:'none'}}>
+                {sHeroes.map(h=>(
+                  <div key={h.id} style={{flexShrink:0,transition:'transform .3s'}}
+                    onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-10px)';}}
+                    onMouseLeave={e=>{e.currentTarget.style.transform='';}}
+                  >
+                    <HeroCard hero={h} width={mob?150:185}/>
+                  </div>
+                ))}
+              </div>
+              <div style={{position:'absolute',right:0,top:0,bottom:0,width:mob?24:60,background:`linear-gradient(to left,${C.bgBase},transparent)`,zIndex:4,pointerEvents:'none'}}/>
+            </div>
+          </div>
+        </section>
+
+        {/* ═══ 05 COMBAT ═══ */}
+        <section style={sec(C.bgDeep,{display:'flex',flexDirection:'column',justifyContent:'center'})}>
+          <div style={{position:'absolute',inset:0,backgroundImage:G,backgroundSize:GS,opacity:.65,pointerEvents:'none'}}/>
+          {!mob && <Num n="05"/>}
+          <div style={{maxWidth:1400,margin:'0 auto',width:'100%',position:'relative',zIndex:1}}>
+            <div style={{marginBottom:mob?14:28,padding:`0 ${px}`}}>
+              <Tag>05 — Story Mode</Tag>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',flexWrap:'wrap',gap:10}}>
+                <h2 style={{fontSize:`clamp(${mob?'20px':'24px'},3.5vw,46px)`,fontWeight:900,color:C.text,letterSpacing:-2,margin:0}}>Face Your Enemies</h2>
+                {!mob && <Link href="/enemies" style={ObtnStyle} onMouseEnter={ObtnHov} onMouseLeave={ObtnOut}>All Chapters →</Link>}
+              </div>
+              <p style={{fontSize:mob?11:13,color:C.textSoft,marginTop:6}}>25 chapters · 75 stages · Each chapter ends with a boss that defines an era</p>
+            </div>
+
+            {mob ? (
+              /* mobile: horizontal scroll */
+              <HScroll pad={16}>
+                {sBosses.map((boss,i)=>{
+                  const fc = FACTIONS[boss.faction]||fList[i%fList.length];
+                  return (
+                    <div key={boss.chapter} style={{flexShrink:0,width:160,height:240,background:C.bgCard,border:`1px solid ${fc.color}30`,clipPath:ch(8),overflow:'hidden'}}>
+                      <div style={{position:'relative',height:'58%',overflow:'hidden'}}>
+                        <img src={boss.image} alt={boss.name} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{e.currentTarget.style.display='none';}}/>
+                        <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.9) 0%,transparent 55%)'}}/>
+                        <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${fc.color}90,transparent)`}}/>
+                        <div style={{position:'absolute',top:6,left:6,clipPath:ch(4),background:`${fc.color}22`,border:`1px solid ${fc.color}55`,padding:'2px 7px',fontSize:7,fontWeight:800,color:fc.color,letterSpacing:2}}>CH.{boss.chapter}</div>
+                      </div>
+                      <div style={{padding:'8px 10px'}}>
+                        <div style={{fontSize:7,color:C.textMuted,letterSpacing:2,marginBottom:2,fontWeight:700,textTransform:'uppercase'}}>{boss.title}</div>
+                        <div style={{fontSize:12,fontWeight:900,color:'#fff',marginBottom:3}}>{boss.name}</div>
+                        <p style={{fontSize:9,color:C.textSoft,lineHeight:1.4,margin:0}}>{boss.desc?.slice(0,60)}...</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </HScroll>
+            ) : (
+              /* desktop: 5-column grid */
+              <div style={{padding:`0 ${px}`,display:'grid',gridTemplateColumns:tab?'repeat(3,1fr)':'repeat(5,1fr)',gap:10,height:tab?'auto':'clamp(260px,44vh,400px)'}}>
+                {sBosses.slice(0,tab?3:5).map((boss,i)=>{
+                  const fc = FACTIONS[boss.faction]||fList[i%fList.length];
+                  return (
+                    <div key={boss.chapter} className="tech-bracket" style={{height:tab?280:'100%',background:C.bgCard,border:`1px solid ${fc.color}22`,clipPath:ch(8),overflow:'hidden',transition:'all .3s',cursor:'pointer'}}
+                      onMouseEnter={e=>{e.currentTarget.style.borderColor=fc.color+'65';e.currentTarget.style.boxShadow=`0 12px 40px ${fc.color}1E`;e.currentTarget.style.transform='translateY(-4px)';}}
+                      onMouseLeave={e=>{e.currentTarget.style.borderColor=fc.color+'22';e.currentTarget.style.boxShadow='';e.currentTarget.style.transform='';}}
+                    >
+                      <div style={{position:'relative',height:'62%',overflow:'hidden'}}>
+                        <img src={boss.image} alt={boss.name} style={{width:'100%',height:'100%',objectFit:'cover',transition:'transform .5s'}}
+                          onError={e=>{e.currentTarget.style.display='none';}}
+                          onMouseEnter={e=>{e.currentTarget.style.transform='scale(1.08)';}}
+                          onMouseLeave={e=>{e.currentTarget.style.transform='';}}
+                        />
+                        <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,rgba(0,0,0,.9) 0%,transparent 50%)'}}/>
+                        <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${fc.color}90,transparent)`}}/>
+                        <div style={{position:'absolute',top:8,left:8,clipPath:ch(4),background:`${fc.color}20`,border:`1px solid ${fc.color}55`,backdropFilter:'blur(8px)',padding:'3px 8px',fontSize:8,fontWeight:800,color:fc.color,letterSpacing:2}}>CH.{boss.chapter}</div>
+                      </div>
+                      <div style={{padding:'10px 12px'}}>
+                        <div style={{fontSize:8,color:C.textMuted,letterSpacing:2,marginBottom:3,fontWeight:700,textTransform:'uppercase'}}>{boss.title}</div>
+                        <div style={{fontSize:13,fontWeight:900,color:'#fff',marginBottom:4}}>{boss.name}</div>
+                        <p style={{fontSize:10,color:C.textSoft,lineHeight:1.5,margin:0}}>{boss.desc?.slice(0,70)}...</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ═══ 06 WORLD ═══ */}
+        <section style={sec(`radial-gradient(ellipse 80% 70% at 60% 50%,rgba(56,189,248,.06),transparent),${C.bgBase}`,{display:'flex',alignItems:'center'})}>
+          <div style={{position:'absolute',inset:0,backgroundImage:G,backgroundSize:GS,opacity:.45,pointerEvents:'none'}}/>
+          {!mob && <div style={{position:'absolute',left:'-2vw',top:'50%',transform:'translateY(-50%)',fontSize:'clamp(100px,18vw,240px)',fontWeight:900,color:'rgba(56,189,248,.026)',letterSpacing:-10,pointerEvents:'none',lineHeight:1,userSelect:'none'}}>06</div>}
+
+          <div style={{maxWidth:1400,margin:'0 auto',width:'100%',padding:`${mob?'72px':tab?'80px':'80px'} ${px} 0`,position:'relative',zIndex:1}}>
+            {mob ? (
+              /* mobile: stacked */
+              <div>
+                <Tag>06 — The World</Tag>
+                <h2 style={{fontSize:'clamp(22px,6vw,36px)',fontWeight:900,color:C.text,letterSpacing:-2,margin:'0 0 12px'}}>The Realm of Aetheria</h2>
+                <p style={{fontSize:13,color:C.textSoft,lineHeight:1.75,marginBottom:16}}>Five factions carved their dominion from raw elemental force across ancient lands.</p>
+                <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:20}}>
+                  {fList.map(f=>(
+                    <div key={f.name} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',clipPath:ch(5),background:`${f.color}08`,border:`1px solid ${f.color}20`}}>
+                      <div style={{width:5,height:5,background:f.color,boxShadow:`0 0 8px ${f.color}`,flexShrink:0}}/>
+                      <span style={{fontSize:12,fontWeight:800,color:f.color}}>{f.name}</span>
+                      <span style={{fontSize:11,color:C.textMuted}}>— {f.element}</span>
+                    </div>
+                  ))}
+                </div>
+                <Link href="/world" style={{display:'inline-block',padding:'10px 20px',clipPath:ch(7),background:`linear-gradient(135deg,${C.primary}30,${C.secondary}20)`,border:'1px solid rgba(167,139,250,.25)',color:C.text,fontSize:12,fontWeight:700}}>Explore World Map →</Link>
+              </div>
+            ) : (
+              /* desktop/tablet: 2-column */
+              <div style={{display:'grid',gridTemplateColumns:tab?'1fr':'1fr 1.4fr',gap:tab?40:60,alignItems:'center'}}>
+                <div>
+                  <Tag>06 — The World</Tag>
+                  <h2 style={{fontSize:'clamp(24px,3.5vw,48px)',fontWeight:900,color:C.text,letterSpacing:-2,margin:'0 0 16px'}}>The Realm of Aetheria</h2>
+                  <p style={{fontSize:14,color:C.textSoft,lineHeight:1.85,marginBottom:24}}>Five factions carved their dominion from raw elemental force — volcanic highlands, frozen tundras, radiant spires, ancient forests, and abyss-scarred wastes.</p>
+                  <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:28}}>
+                    {fList.map(f=>(
+                      <div key={f.name} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 14px',clipPath:ch(6),background:`${f.color}08`,border:`1px solid ${f.color}20`,transition:'all .2s',cursor:'pointer'}}
+                        onMouseEnter={e=>{e.currentTarget.style.borderColor=f.color+'50';e.currentTarget.style.background=`${f.color}14`;}}
+                        onMouseLeave={e=>{e.currentTarget.style.borderColor=f.color+'20';e.currentTarget.style.background=`${f.color}08`;}}
+                      >
+                        <div style={{width:5,height:5,background:f.color,boxShadow:`0 0 8px ${f.color}`,flexShrink:0}}/>
+                        <span style={{fontSize:12,fontWeight:800,color:f.color}}>{f.name}</span>
+                        <span style={{fontSize:12,color:C.textMuted}}>— {f.element}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <Link href="/world" style={{display:'inline-block',padding:'12px 26px',clipPath:ch(8),background:`linear-gradient(135deg,${C.primary}30,${C.secondary}20)`,border:'1px solid rgba(167,139,250,.25)',color:C.text,fontSize:13,fontWeight:700,transition:'all .2s'}}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor='rgba(167,139,250,.6)';e.currentTarget.style.background=`linear-gradient(135deg,${C.primary}50,${C.secondary}38)`;}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor='rgba(167,139,250,.25)';e.currentTarget.style.background=`linear-gradient(135deg,${C.primary}30,${C.secondary}20)`;}}
+                  >Explore World Map →</Link>
+                </div>
+                {!tab && (
+                  <div className="tech-bracket" style={{position:'relative',overflow:'hidden',clipPath:ch(16),border:`1px solid ${C.border}`,boxShadow:'0 24px 80px rgba(0,0,0,.6)',height:'clamp(300px,55vh,480px)'}}>
+                    <img src="/assets/worldMap/world-map.png" alt="World Map" style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}/>
+                    <div style={{position:'absolute',inset:0,background:'linear-gradient(135deg,rgba(124,58,237,.08),transparent 60%)'}}/>
+                    <div style={{position:'absolute',top:0,bottom:0,width:80,background:'linear-gradient(90deg,transparent,rgba(56,189,248,.06),transparent)',animation:'lineSweep 4s ease-in-out infinite',pointerEvents:'none'}}/>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ═══ 07 STORY STATS ═══ */}
+        <section style={sec(C.bgDeep,{display:'flex',flexDirection:'column',justifyContent:'center'})}>
+          <div style={{position:'absolute',inset:0,backgroundImage:G,backgroundSize:GS,opacity:.7,pointerEvents:'none'}}/>
+          {!mob && <Num n="07"/>}
+          <div style={{maxWidth:1400,margin:'0 auto',width:'100%',padding:`0 ${px}`,position:'relative',zIndex:1}}>
+            <div style={{textAlign:'center',marginBottom:mob?24:44}}>
+              <Tag>07 — Story Mode</Tag>
+              <h2 style={{fontSize:`clamp(${mob?'22px':'26px'},4vw,52px)`,fontWeight:900,color:C.text,letterSpacing:-2,margin:'0 0 8px'}}>25 Chapters of Lore</h2>
+              {!mob && <p style={{fontSize:13,color:C.textSoft,maxWidth:460,margin:'0 auto'}}>Every stage advances a story spanning dimensional collapse, sovereign battles, and the fate of five civilizations.</p>}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:mob?'repeat(2,1fr)':tab?'repeat(2,1fr)':'repeat(4,1fr)',gap:mob?10:14}}>
+              {[
+                {v:'25',l:'Chapters',       sub:'Epic story arcs',    c:C.primary  },
+                {v:'75',l:'Story Stages',   sub:'Unique encounters',  c:C.secondary},
+                {v:'5', l:'Sovereign Arcs', sub:'Legendary paths',    c:C.gold     },
+                {v:'∞', l:'Endless Tower',  sub:'Infinite challenge', c:C.accent   },
+              ].map(s=>(
+                <div key={s.l} className="tech-bracket" style={{
+                  background:`${s.c}0A`,border:`1px solid ${s.c}22`,
+                  clipPath:ch(10),padding:mob?'20px 12px':'clamp(24px,4vh,44px) 20px',
+                  textAlign:'center',position:'relative',overflow:'hidden',transition:'all .3s',
+                }}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor=s.c+'50';e.currentTarget.style.boxShadow=`0 8px 40px ${s.c}15`;e.currentTarget.style.transform='translateY(-4px)';}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor=s.c+'22';e.currentTarget.style.boxShadow='';e.currentTarget.style.transform='';}}
+                >
+                  <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${s.c}80,transparent)`}}/>
+                  <div style={{fontSize:mob?'clamp(36px,9vw,52px)':'clamp(44px,7vw,72px)',fontWeight:900,color:s.c,lineHeight:1,marginBottom:8,textShadow:`0 0 40px ${s.c}50`}}>{s.v}</div>
+                  <div style={{fontSize:mob?11:13,color:C.text,fontWeight:700,marginBottom:3}}>{s.l}</div>
+                  <div style={{fontSize:mob?9:11,color:C.textMuted}}>{s.sub}</div>
+                </div>
               ))}
             </div>
+            {!mob && (
+              <div style={{textAlign:'center',marginTop:32}}>
+                <Link href="/lore" style={ObtnStyle} onMouseEnter={ObtnHov} onMouseLeave={ObtnOut}>Read the Full Story →</Link>
+              </div>
+            )}
           </div>
+        </section>
+
+        {/* ═══ 08 DOWNLOAD ═══ */}
+        <section style={sec(`
+          radial-gradient(ellipse 80% 70% at 50% 120%,rgba(56,189,248,.1),transparent),
+          radial-gradient(ellipse 60% 60% at 80% 40%,rgba(124,58,237,.12),transparent),
+          radial-gradient(ellipse 50% 50% at 20% 60%,rgba(219,39,119,.07),transparent),
+          ${C.bgBase}
+        `,{display:'flex',flexDirection:'column',justifyContent:'center'})}>
+          <div style={{position:'absolute',inset:0,backgroundImage:G,backgroundSize:GS,opacity:.55,pointerEvents:'none'}}/>
+          <div style={{position:'absolute',top:0,left:0,right:0,height:1,background:'linear-gradient(90deg,#FF4500 0%,#D4A017 25%,#2ECC71 50%,#00B4D8 75%,#9B59B6 100%)'}}/>
+          <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none',overflow:'hidden'}}>
+            <div style={{fontSize:'clamp(50px,12vw,180px)',fontWeight:900,color:'rgba(56,189,248,.025)',letterSpacing:-4,whiteSpace:'nowrap',userSelect:'none'}}>AETHERIA</div>
+          </div>
+
+          <div style={{maxWidth:580,margin:'0 auto',textAlign:'center',padding:`0 ${px}`,position:'relative',zIndex:1}}>
+            <div style={{display:'inline-flex',alignItems:'center',gap:6,marginBottom:16,clipPath:ch(5),background:'rgba(52,211,153,.1)',border:'1px solid rgba(52,211,153,.3)',padding:'4px 12px'}}>
+              <div style={{width:5,height:5,background:'#34D399',boxShadow:'0 0 7px #34D399',animation:'pulse 2s infinite'}}/>
+              <span style={{fontSize:8,fontWeight:800,color:'#34D399',letterSpacing:3,textTransform:'uppercase'}}>Free to Play</span>
+            </div>
+            <Tag>08 — Available Now</Tag>
+            <h2 style={{fontSize:`clamp(${mob?'26px':'28px'},5vw,58px)`,fontWeight:900,margin:'0 0 10px',letterSpacing:-2,background:`linear-gradient(160deg,#fff 0%,${C.accent} 50%,${C.primaryL} 100%)`,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>
+              Begin Your Legend
+            </h2>
+            <p style={{fontSize:mob?13:15,color:C.textSoft,lineHeight:1.8,marginBottom:mob?20:28}}>Free to play. Cloud save included. 53 heroes waiting to be collected.</p>
+
+            <div style={{display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap',marginBottom:mob?20:28}}>
+              {['53 Heroes','Cloud Save','No Pay-to-Win','75 Stages'].map(f=>(
+                <div key={f} style={{padding:'4px 10px',clipPath:ch(5),background:'rgba(56,189,248,.07)',border:'1px solid rgba(56,189,248,.2)',fontSize:10,fontWeight:600,color:C.textSoft}}>{f}</div>
+              ))}
+            </div>
+
+            <div style={{display:'flex',gap:mob?10:12,justifyContent:'center',flexWrap:'wrap',marginBottom:mob?28:40}}>
+              {[{store:'App Store',sub:'Download on the',icon:'A'},{store:'Google Play',sub:'Get it on',icon:'G'}].map(s=>(
+                <a key={s.store} href="#" style={{display:'flex',alignItems:'center',gap:12,padding:mob?'12px 18px':'14px 24px',clipPath:ch(10),background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',color:'#fff',minWidth:mob?150:175,transition:'all .25s',backdropFilter:'blur(12px)'}}
+                  onMouseEnter={e=>{e.currentTarget.style.background='rgba(56,189,248,.12)';e.currentTarget.style.borderColor='rgba(56,189,248,.45)';e.currentTarget.style.transform='translateY(-3px)';}}
+                  onMouseLeave={e=>{e.currentTarget.style.background='rgba(255,255,255,.06)';e.currentTarget.style.borderColor='rgba(255,255,255,.12)';e.currentTarget.style.transform='';}}
+                >
+                  <div style={{width:28,height:28,clipPath:ch(5),background:'rgba(255,255,255,.08)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                    <span style={{fontSize:12,fontWeight:900,color:'#fff'}}>{s.icon}</span>
+                  </div>
+                  <div style={{textAlign:'left'}}>
+                    <div style={{fontSize:8,color:'rgba(255,255,255,.4)',letterSpacing:1,textTransform:'uppercase'}}>{s.sub}</div>
+                    <div style={{fontSize:mob?14:16,fontWeight:800}}>{s.store}</div>
+                  </div>
+                </a>
+              ))}
+            </div>
+
+            <div style={{display:'flex',justifyContent:'center',gap:mob?16:24,flexWrap:'wrap',paddingTop:mob?16:20,borderTop:`1px solid ${C.border}`}}>
+              {[{l:'Privacy',h:'/privacy'},{l:'Terms',h:'/terms'},{l:'Account Deletion',h:'/account-deletion'}].map(x=>(
+                <Link key={x.l} href={x.h} style={{fontSize:11,color:C.textMuted,transition:'color .2s'}}
+                  onMouseEnter={e=>{e.currentTarget.style.color=C.textSoft;}}
+                  onMouseLeave={e=>{e.currentTarget.style.color=C.textMuted;}}
+                >{x.l}</Link>
+              ))}
+              <span style={{fontSize:11,color:C.textMuted}}>© 2025 Ziriverse</span>
+            </div>
+          </div>
+        </section>
+
+      </div>{/* /scroll container */}
+
+      {/* ── FIXED: side dot nav (desktop only) ── */}
+      {!mob && (
+        <nav style={{position:'fixed',right:tab?16:28,top:'50%',transform:'translateY(-50%)',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:10,zIndex:500}}>
+          {SMETA.map((s,i)=>{
+            const on = i===active;
+            return (
+              <button key={s.id} onClick={()=>go(i)}
+                onMouseEnter={()=>setHov(i)} onMouseLeave={()=>setHov(null)}
+                style={{display:'flex',alignItems:'center',gap:8,background:'none',border:'none',cursor:'pointer',padding:'2px 0',outline:'none'}}
+              >
+                {!tab && (
+                  <div style={{fontSize:9,fontWeight:700,color:on?C.accent:C.textMuted,letterSpacing:2,textTransform:'uppercase',whiteSpace:'nowrap',opacity:hov===i||on?1:0,transform:hov===i||on?'translateX(0)':'translateX(8px)',transition:'all .25s'}}>{s.label}</div>
+                )}
+                <div style={{width:on?18:5,height:5,background:on?C.accent:'rgba(255,255,255,.22)',clipPath:on?ch(2):'none',borderRadius:on?0:'50%',transition:'all .3s',boxShadow:on?`0 0 8px ${C.accent}`:'none'}}/>
+              </button>
+            );
+          })}
+        </nav>
+      )}
+
+      {/* ── FIXED: section counter (desktop only) ── */}
+      {!mob && (
+        <div style={{position:'fixed',bottom:28,right:tab?20:64,zIndex:500,display:'flex',alignItems:'center',gap:8,pointerEvents:'none'}}>
+          <div style={{width:20,height:1,background:`linear-gradient(to right,transparent,${C.accent}50)`}}/>
+          <span style={{fontSize:11,fontWeight:800,color:C.accent,letterSpacing:2}}>{String(active+1).padStart(2,'0')}</span>
+          <span style={{fontSize:11,color:C.textMuted,letterSpacing:1}}>/ {String(SMETA.length).padStart(2,'0')}</span>
+          <div style={{width:20,height:1,background:`linear-gradient(to left,transparent,${C.textMuted}40)`}}/>
         </div>
-      </footer>
+      )}
+
+      {/* ── FIXED: section name bottom-left (desktop only) ── */}
+      {!mob && (
+        <div style={{position:'fixed',bottom:28,left:'clamp(20px,5vw,60px)',zIndex:500,display:'flex',alignItems:'center',gap:8,pointerEvents:'none'}}>
+          <div style={{width:1,height:14,background:`linear-gradient(to bottom,${C.accent}80,transparent)`}}/>
+          <span style={{fontSize:8,fontWeight:700,color:C.textMuted,letterSpacing:4,textTransform:'uppercase'}}>{SMETA[active]?.label}</span>
+        </div>
+      )}
+
+      {/* ── FIXED: mobile bottom dot indicators ── */}
+      {mob && (
+        <div style={{position:'fixed',bottom:16,left:'50%',transform:'translateX(-50%)',zIndex:500,display:'flex',alignItems:'center',gap:6}}>
+          {SMETA.map((_,i)=>(
+            <button key={i} onClick={()=>go(i)} style={{width:i===active?20:6,height:6,background:i===active?C.accent:'rgba(255,255,255,.2)',border:'none',cursor:'pointer',padding:0,borderRadius:i===active?0:3,clipPath:i===active?ch(2):'none',transition:'all .3s',boxShadow:i===active?`0 0 8px ${C.accent}`:'none'}}/>
+          ))}
+        </div>
+      )}
     </>
   );
 }
