@@ -6,6 +6,16 @@ const FACTION_COLORS = {
   SUNSPIRE:  '#D4A017',
   VERDANIA:  '#2ECC71',
   VOIDMARK:  '#9B59B6',
+  KHEMARA:   '#E0912E',
+};
+
+const FACTION_ICON_EXT = {
+  EMBERVEIL: 'png',
+  GLACIARA:  'png',
+  SUNSPIRE:  'webp',
+  VERDANIA:  'png',
+  VOIDMARK:  'webp',
+  KHEMARA:   'png',
 };
 
 const RANK_COLORS = {
@@ -154,7 +164,7 @@ export default function HeroCard({ hero, width = 220, compact = false }) {
         width: px(22), height: px(22), background:'rgba(0,0,0,0.55)',
         borderRadius: px(4), overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center',
       }}>
-        <img src={`/assets/faction/${hero.faction}.png`} alt={hero.faction}
+        <img src={`/assets/faction/${hero.faction}.${FACTION_ICON_EXT[hero.faction] || 'png'}`} alt={hero.faction}
           style={{ width:'80%', height:'80%', objectFit:'contain' }} />
       </div>
 

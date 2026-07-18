@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Nav from '../../components/Nav';
-import { BOSSES, FACTIONS } from '../../lib/gameData';
+import { BOSSES, MINI_BOSSES, MOB_ENEMIES, ENEMY_STATS } from '../../lib/gameData';
 
 const C = {
   bgDeep: '#08031A', bgBase: '#0E0720',
@@ -10,42 +10,21 @@ const C = {
   border: 'rgba(167,139,250,0.18)',
 };
 
-// Mini-boss showcase (static)
-const MINI_BOSSES = [
-  { name: 'Frost Sentinel',    ch: 1, image: '/assets/enemy/mini-boss_001.webp', type: 'Mini-Boss' },
-  { name: 'Ember Warden',      ch: 2, image: '/assets/enemy/mini-boss_002.webp', type: 'Mini-Boss' },
-  { name: 'Holy Enforcer',     ch: 3, image: '/assets/enemy/mini-boss_003.webp', type: 'Mini-Boss' },
-  { name: 'Thornguard',        ch: 4, image: '/assets/enemy/mini-boss_004.webp', type: 'Mini-Boss' },
-  { name: 'Bloom Predator',    ch: 5, image: '/assets/enemy/mini-boss_005.webp', type: 'Mini-Boss' },
-  { name: 'Shadow Stalker',    ch: 6, image: '/assets/enemy/mini-boss_006.webp', type: 'Mini-Boss' },
-];
-
-const MOB_ENEMIES = [
-  { name: 'Frost Imp',        image: '/assets/enemy/mob_001.webp' },
-  { name: 'Ember Grunt',      image: '/assets/enemy/mob_002.webp' },
-  { name: 'Solar Acolyte',    image: '/assets/enemy/mob_003.webp' },
-  { name: 'Root Creep',       image: '/assets/enemy/mob_004.webp' },
-  { name: 'Void Wraith',      image: '/assets/enemy/mob_005.webp' },
-  { name: 'Glacial Specter',  image: '/assets/enemy/mob_006.webp' },
-  { name: 'Ash Fiend',        image: '/assets/enemy/mob_007.webp' },
-  { name: 'Thorn Husk',       image: '/assets/enemy/mob_008.webp' },
-];
-
-function EnemyCard({ name, image, tier, chapter, faction }) {
-  const fc = faction ? FACTIONS[faction] : null;
+function EnemyCard({ name, image, tier, chapter, color }) {
+  const c = color || 'rgba(167,139,250,0.4)';
   return (
     <div style={{
-      background: 'rgba(0,0,0,0.5)', border: `1px solid ${fc ? fc.color + '30' : C.border}`,
+      background: 'rgba(0,0,0,0.5)', border: `1px solid ${color ? color + '30' : C.border}`,
       borderRadius: 12, overflow: 'hidden', transition: 'all 0.3s',
     }}
       onMouseEnter={e => {
         e.currentTarget.style.transform = 'translateY(-4px)';
-        e.currentTarget.style.borderColor = fc ? fc.color + '70' : 'rgba(167,139,250,0.4)';
-        e.currentTarget.style.boxShadow = `0 12px 32px ${fc ? fc.color + '20' : 'rgba(124,58,237,0.15)'}`;
+        e.currentTarget.style.borderColor = c + '70';
+        e.currentTarget.style.boxShadow = `0 12px 32px ${c}20`;
       }}
       onMouseLeave={e => {
         e.currentTarget.style.transform = '';
-        e.currentTarget.style.borderColor = fc ? fc.color + '30' : C.border;
+        e.currentTarget.style.borderColor = color ? color + '30' : C.border;
         e.currentTarget.style.boxShadow = '';
       }}
     >
@@ -69,7 +48,7 @@ function EnemyCard({ name, image, tier, chapter, faction }) {
           <div style={{
             position: 'absolute', top: 8, right: 8,
             padding: '3px 8px', borderRadius: 6, fontSize: 10, fontWeight: 700,
-            background: 'rgba(0,0,0,0.7)', color: fc ? fc.color : C.textSoft,
+            background: 'rgba(0,0,0,0.7)', color: color || C.textSoft,
           }}>
             CH.{chapter}
           </div>
@@ -77,7 +56,6 @@ function EnemyCard({ name, image, tier, chapter, faction }) {
       </div>
       <div style={{ padding: '12px 14px' }}>
         <div style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>{name}</div>
-        {faction && <div style={{ fontSize: 11, color: fc?.color || C.textMuted, fontWeight: 600 }}>{faction}</div>}
       </div>
     </div>
   );
@@ -104,7 +82,7 @@ export default function EnemiesPage() {
           Face Your Enemies
         </h1>
         <p style={{ fontSize: 16, color: C.textSoft, maxWidth: 520, margin: '0 auto' }}>
-          25 chapters. A boss that defines each one. And hundreds of mobs between you and victory.
+          {ENEMY_STATS.chapters} chapters. A boss that defines each one. And hundreds of mobs between you and victory.
         </p>
       </div>
 
@@ -114,7 +92,7 @@ export default function EnemiesPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
             <div>
               <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 3, color: '#DB2777', marginBottom: 6 }}>CHAPTER BOSSES</div>
-              <h2 style={{ fontSize: 'clamp(22px,3vw,32px)', fontWeight: 900, color: C.text, margin: 0 }}>The 15 Great Bosses</h2>
+              <h2 style={{ fontSize: 'clamp(22px,3vw,32px)', fontWeight: 900, color: C.text, margin: 0 }}>The {ENEMY_STATS.bossTypes} Great Bosses</h2>
             </div>
             {selectedChapter && (
               <button onClick={() => setSelectedChapter(null)} style={{
@@ -129,8 +107,8 @@ export default function EnemiesPage() {
           {/* Boss detail panel */}
           {boss && (
             <div style={{
-              marginBottom: 40, background: `linear-gradient(135deg, rgba(0,0,0,0.7), ${FACTIONS[boss.faction].color}15)`,
-              border: `1px solid ${FACTIONS[boss.faction].color}40`,
+              marginBottom: 40, background: `linear-gradient(135deg, rgba(0,0,0,0.7), ${boss.color}15)`,
+              border: `1px solid ${boss.color}40`,
               borderRadius: 16, overflow: 'hidden', display: 'flex', flexWrap: 'wrap',
             }}>
               <div style={{ width: 280, flexShrink: 0, position: 'relative' }}>
@@ -144,19 +122,24 @@ export default function EnemiesPage() {
                 }} />
               </div>
               <div style={{ flex: 1, padding: 32, minWidth: 260 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 3, color: FACTIONS[boss.faction].color, marginBottom: 8 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 3, color: boss.color, marginBottom: 8 }}>
                   CHAPTER {boss.chapter} · {boss.title}
                 </div>
-                <h3 style={{ fontSize: 28, fontWeight: 900, color: '#fff', margin: '0 0 12px' }}>{boss.name}</h3>
+                <h3 style={{ fontSize: 28, fontWeight: 900, color: '#fff', margin: '0 0 4px' }}>{boss.name}</h3>
+                {boss.epithet && (
+                  <div style={{ fontSize: 13, color: boss.accent || boss.color, fontWeight: 700, marginBottom: 12 }}>{boss.epithet}</div>
+                )}
                 <p style={{ fontSize: 15, color: C.textSoft, lineHeight: 1.7, marginBottom: 20, maxWidth: 500 }}>{boss.desc}</p>
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                  <div style={{
-                    padding: '6px 14px', borderRadius: 20,
-                    background: `${FACTIONS[boss.faction].color}20`, border: `1px solid ${FACTIONS[boss.faction].color}40`,
-                    fontSize: 12, fontWeight: 700, color: FACTIONS[boss.faction].color,
-                  }}>
-                    {boss.faction}
-                  </div>
+                  {boss.effect && (
+                    <div style={{
+                      padding: '6px 14px', borderRadius: 20,
+                      background: `${boss.color}20`, border: `1px solid ${boss.color}40`,
+                      fontSize: 12, fontWeight: 700, color: boss.color,
+                    }}>
+                      {boss.effect}
+                    </div>
+                  )}
                   <div style={{
                     padding: '6px 14px', borderRadius: 20,
                     background: 'rgba(219,39,119,0.15)', border: '1px solid rgba(219,39,119,0.4)',
@@ -172,7 +155,6 @@ export default function EnemiesPage() {
           {/* Chapter grid */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 16 }}>
             {BOSSES.map(b => {
-              const fc = FACTIONS[b.faction];
               const active = selectedChapter === b.chapter;
               return (
                 <div key={b.chapter}
@@ -180,13 +162,13 @@ export default function EnemiesPage() {
                   style={{ cursor: 'pointer' }}
                 >
                   <div style={{
-                    background: active ? `${fc.color}20` : 'rgba(0,0,0,0.5)',
-                    border: `1px solid ${active ? fc.color + '80' : fc.color + '30'}`,
+                    background: active ? `${b.color}20` : 'rgba(0,0,0,0.5)',
+                    border: `1px solid ${active ? b.color + '80' : b.color + '30'}`,
                     borderRadius: 12, overflow: 'hidden', transition: 'all 0.3s',
-                    boxShadow: active ? `0 8px 24px ${fc.color}25` : '',
+                    boxShadow: active ? `0 8px 24px ${b.color}25` : '',
                   }}
-                    onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = fc.color + '60'; e.currentTarget.style.transform = 'translateY(-3px)'; } }}
-                    onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = fc.color + '30'; e.currentTarget.style.transform = ''; } }}
+                    onMouseEnter={e => { if (!active) { e.currentTarget.style.borderColor = b.color + '60'; e.currentTarget.style.transform = 'translateY(-3px)'; } }}
+                    onMouseLeave={e => { if (!active) { e.currentTarget.style.borderColor = b.color + '30'; e.currentTarget.style.transform = ''; } }}
                   >
                     <div style={{ position: 'relative', aspectRatio: '3/4', overflow: 'hidden', background: 'rgba(0,0,0,0.3)' }}>
                       <img src={b.image} alt={b.name}
@@ -196,8 +178,8 @@ export default function EnemiesPage() {
                       <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.75), transparent 50%)' }} />
                       <div style={{
                         position: 'absolute', top: 8, left: 8,
-                        background: 'rgba(0,0,0,0.75)', border: `1px solid ${fc.color}60`,
-                        borderRadius: 6, padding: '3px 8px', fontSize: 10, fontWeight: 700, color: fc.color,
+                        background: 'rgba(0,0,0,0.75)', border: `1px solid ${b.color}60`,
+                        borderRadius: 6, padding: '3px 8px', fontSize: 10, fontWeight: 700, color: b.color,
                       }}>
                         CH.{b.chapter}
                       </div>
@@ -219,11 +201,11 @@ export default function EnemiesPage() {
         <div style={{ maxWidth: 1400, margin: '0 auto' }}>
           <div style={{ marginBottom: 32 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 3, color: C.primaryL, marginBottom: 6 }}>MID-CHAPTER ENCOUNTERS</div>
-            <h2 style={{ fontSize: 'clamp(22px,3vw,32px)', fontWeight: 900, color: C.text, margin: 0 }}>Mini-Bosses</h2>
+            <h2 style={{ fontSize: 'clamp(22px,3vw,32px)', fontWeight: 900, color: C.text, margin: 0 }}>Mini-Bosses ({MINI_BOSSES.length})</h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16 }}>
-            {MINI_BOSSES.map((mb, i) => (
-              <EnemyCard key={i} name={mb.name} image={mb.image} tier="MINI-BOSS" chapter={mb.ch} />
+            {MINI_BOSSES.map(mb => (
+              <EnemyCard key={mb.imageKey} name={mb.name} image={mb.image} tier="MINI-BOSS" chapter={mb.chapter} />
             ))}
           </div>
         </div>
@@ -234,11 +216,11 @@ export default function EnemiesPage() {
         <div style={{ maxWidth: 1400, margin: '0 auto' }}>
           <div style={{ marginBottom: 32 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 3, color: C.textMuted, marginBottom: 6 }}>COMMON ENEMIES</div>
-            <h2 style={{ fontSize: 'clamp(22px,3vw,32px)', fontWeight: 900, color: C.text, margin: 0 }}>Mob Enemies</h2>
+            <h2 style={{ fontSize: 'clamp(22px,3vw,32px)', fontWeight: 900, color: C.text, margin: 0 }}>Mob Enemies ({MOB_ENEMIES.length})</h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 14 }}>
-            {MOB_ENEMIES.map((m, i) => (
-              <EnemyCard key={i} name={m.name} image={m.image} tier="MOB" />
+            {MOB_ENEMIES.map(m => (
+              <EnemyCard key={m.imageKey} name={m.name} image={m.image} tier="MOB" chapter={m.chapter} />
             ))}
           </div>
         </div>
@@ -249,10 +231,10 @@ export default function EnemiesPage() {
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
             {[
-              { val: '25', label: 'Story Chapters',    color: C.secondary },
-              { val: '75', label: 'Total Stages',      color: C.primary   },
-              { val: '15', label: 'Major Boss Types',  color: '#D97706'   },
-              { val: '80+', label: 'Unique Enemies',   color: '#00B4D8'   },
+              { val: String(ENEMY_STATS.chapters),         label: 'Story Chapters',   color: C.secondary },
+              { val: String(ENEMY_STATS.stages),           label: 'Total Stages',     color: C.primary   },
+              { val: String(ENEMY_STATS.bossTypes),        label: 'Major Boss Types', color: '#D97706'   },
+              { val: `${ENEMY_STATS.uniqueEnemies}+`,       label: 'Unique Enemies',   color: '#00B4D8'   },
             ].map(s => (
               <div key={s.label} style={{
                 background: `${s.color}10`, border: `1px solid ${s.color}30`,

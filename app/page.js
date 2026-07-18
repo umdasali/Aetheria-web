@@ -3,7 +3,10 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Nav from '../components/Nav';
 import HeroCard from '../components/HeroCard';
+import FactionWeather, { useFactionCycle } from '../components/FactionWeather';
 import { SOVEREIGN_HEROES, FACTIONS, BOSSES, HEROES } from '../lib/gameData';
+
+const FACTION_LIST = Object.values(FACTIONS);
 
 const C = {
   bgDeep:'#06040F', bgBase:'#0B0817', bgCard:'#100D1F',
@@ -114,7 +117,8 @@ export default function Page() {
   const go      = i => cRef.current?.scrollTo({top:i*(cRef.current?.clientHeight||window.innerHeight),behavior:'smooth'});
   const scrollH = d => hRef.current?.scrollBy({left:d*260,behavior:'smooth'});
 
-  const fList   = Object.values(FACTIONS);
+  const fList   = FACTION_LIST;
+  const { faction: weatherFaction, reduced: weatherReduced } = useFactionCycle(FACTION_LIST);
   const sBosses = BOSSES.slice(0,5);
   const sHeroes = HEROES.filter(h=>h.rank==='S'||h.sovereign).slice(0,12);
 
@@ -136,14 +140,14 @@ export default function Page() {
       <Nav/>
 
       {/* dvh support + scrollbar hide + mobile utilities */}
-      <style>{`
+      <style dangerouslySetInnerHTML={{__html: `
         #fp,:root{scroll-behavior:smooth}
         #fp{-webkit-overflow-scrolling:touch}
         #fp::-webkit-scrollbar{display:none}
         #fp{-ms-overflow-style:none;scrollbar-width:none}
         @supports(height:100dvh){#fp,#fp>section{height:100dvh!important}}
         .hs::-webkit-scrollbar{display:none}
-      `}</style>
+      `}} />
 
       {/* ════════════════════════════════════
           FULL-PAGE SCROLL CONTAINER
@@ -163,6 +167,7 @@ export default function Page() {
           ${C.bgDeep}
         `,{display:'flex',alignItems:'center'})}>
           <div style={{position:'absolute',inset:0,backgroundImage:G,backgroundSize:GS,opacity:.8,pointerEvents:'none'}}/>
+          <FactionWeather faction={weatherFaction} reduced={weatherReduced}/>
           <div style={{position:'absolute',inset:0,backgroundImage:'repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.04) 3px,rgba(0,0,0,.04) 4px)',pointerEvents:'none',zIndex:1}}/>
           {!mob && (
             <div style={{position:'absolute',top:0,right:0,width:'40%',height:'100%',overflow:'hidden',opacity:.3,pointerEvents:'none'}}>
@@ -183,12 +188,15 @@ export default function Page() {
             <div style={{textAlign:mob?'center':'left',display:'flex',flexDirection:'column',alignItems:mob?'center':'flex-start'}}>
               {/* faction pills */}
               <div style={{display:'flex',gap:6,marginBottom:mob?16:28,flexWrap:'wrap',justifyContent:mob?'center':'flex-start'}}>
-                {fList.map(f=>(
-                  <div key={f.name} style={{clipPath:ch(4),background:`${f.color}10`,border:`1px solid ${f.color}35`,padding:'3px 8px',display:'flex',alignItems:'center',gap:4}}>
-                    <div style={{width:4,height:4,background:f.color,boxShadow:`0 0 6px ${f.color}`,flexShrink:0}}/>
-                    <span style={{fontSize:7,fontWeight:700,color:f.color,letterSpacing:1.5,textTransform:'uppercase'}}>{f.name}</span>
-                  </div>
-                ))}
+                {fList.map(f=>{
+                  const isWeather = f.name===weatherFaction.name;
+                  return (
+                    <div key={f.name} style={{clipPath:ch(4),background:`${f.color}${isWeather?'22':'10'}`,border:`1px solid ${f.color}${isWeather?'80':'35'}`,padding:'3px 8px',display:'flex',alignItems:'center',gap:4,transition:'all 1s ease',boxShadow:isWeather?`0 0 10px ${f.color}50`:'none'}}>
+                      <div style={{width:4,height:4,background:f.color,boxShadow:`0 0 6px ${f.color}`,flexShrink:0}}/>
+                      <span style={{fontSize:7,fontWeight:700,color:f.color,letterSpacing:1.5,textTransform:'uppercase'}}>{f.name}</span>
+                    </div>
+                  );
+                })}
               </div>
 
               <div style={{fontSize:`clamp(${mob?'42px':'52px'},7vw,96px)`,fontWeight:900,lineHeight:.85,background:`linear-gradient(160deg,#fff 0%,${C.primaryL} 45%,${C.secondary} 100%)`,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',letterSpacing:-4,marginBottom:8}}>
@@ -201,7 +209,7 @@ export default function Page() {
 
               {!mob && (
                 <p style={{fontSize:'clamp(13px,1.2vw,15px)',color:C.textSoft,lineHeight:1.8,maxWidth:460,marginBottom:28}}>
-                  Collect 53 legendary heroes across five factions. Master Trump Card battles. Unravel the fate of Aetheria.
+                  Collect 107 legendary heroes across six factions. Master Trump Card battles. Unravel the fate of Aetheria.
                 </p>
               )}
 
@@ -229,7 +237,7 @@ export default function Page() {
               {/* Stats — 2×2 on mobile, single row on desktop */}
               {mob ? (
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',width:'100%',border:`1px solid ${C.border}`}}>
-                  {[{v:'53+',l:'Heroes'},{v:'5',l:'Factions'},{v:'75',l:'Stages'},{v:'200',l:'Floors'}].map((s,i)=>(
+                  {[{v:'107',l:'Heroes'},{v:'6',l:'Factions'},{v:'90',l:'Stages'},{v:'200',l:'Floors'}].map((s,i)=>(
                     <div key={s.l} style={{padding:'12px 4px',textAlign:'center',borderRight:i%2===0?`1px solid ${C.border}`:'none',borderBottom:i<2?`1px solid ${C.border}`:'none'}}>
                       <div style={{fontSize:'clamp(20px,5vw,26px)',fontWeight:900,color:C.accent,lineHeight:1,letterSpacing:-1}}>{s.v}</div>
                       <div style={{fontSize:8,color:C.textMuted,fontWeight:600,marginTop:3,letterSpacing:1.5,textTransform:'uppercase'}}>{s.l}</div>
@@ -238,7 +246,7 @@ export default function Page() {
                 </div>
               ) : (
                 <div style={{display:'flex',borderTop:`1px solid ${C.border}`,borderBottom:`1px solid ${C.border}`,width:'100%'}}>
-                  {[{v:'53+',l:'Heroes'},{v:'5',l:'Factions'},{v:'75',l:'Stages'},{v:'200',l:'Tower Floors'}].map((s,i)=>(
+                  {[{v:'107',l:'Heroes'},{v:'6',l:'Factions'},{v:'90',l:'Stages'},{v:'200',l:'Tower Floors'}].map((s,i)=>(
                     <div key={s.l} style={{flex:1,padding:'16px 4px',textAlign:'center',borderRight:i<3?`1px solid ${C.border}`:'none'}}>
                       <div style={{fontSize:'clamp(22px,2.5vw,30px)',fontWeight:900,color:C.accent,lineHeight:1,letterSpacing:-1}}>{s.v}</div>
                       <div style={{fontSize:9,color:C.textMuted,fontWeight:600,marginTop:4,letterSpacing:2,textTransform:'uppercase'}}>{s.l}</div>
@@ -281,7 +289,7 @@ export default function Page() {
           <div style={{maxWidth:1400,margin:'0 auto',width:'100%',position:'relative',zIndex:1}}>
             <div style={{textAlign:'center',marginBottom:mob?20:36,padding:`0 ${px}`}}>
               <Tag>02 — Sovereign Heroes</Tag>
-              <h2 style={{fontSize:`clamp(${mob?'22px':'28px'},4vw,52px)`,fontWeight:900,color:C.text,letterSpacing:-2,margin:'0 0 8px'}}>Rulers of Five Factions</h2>
+              <h2 style={{fontSize:`clamp(${mob?'22px':'28px'},4vw,52px)`,fontWeight:900,color:C.text,letterSpacing:-2,margin:'0 0 8px'}}>Rulers of Six Factions</h2>
               {!mob && <p style={{fontSize:13,color:C.textSoft,maxWidth:460,margin:'0 auto'}}>Each faction crowned one sovereign — chosen by destiny, born of catastrophe, forged in the abyss.</p>}
             </div>
 
@@ -321,7 +329,7 @@ export default function Page() {
             )}
 
             <div style={{textAlign:'center',marginTop:mob?20:8,padding:`0 ${px}`}}>
-              <Link href="/heroes" style={ObtnStyle} onMouseEnter={ObtnHov} onMouseLeave={ObtnOut}>View All 53 Heroes →</Link>
+              <Link href="/heroes" style={ObtnStyle} onMouseEnter={ObtnHov} onMouseLeave={ObtnOut}>View All 107 Heroes →</Link>
             </div>
           </div>
         </section>
@@ -334,7 +342,7 @@ export default function Page() {
             <div style={{marginBottom:mob?16:24,padding:`0 ${px}`,display:'flex',justifyContent:'space-between',alignItems:'flex-end',flexWrap:'wrap',gap:10}}>
               <div>
                 <Tag>03 — World of Aetheria</Tag>
-                <h2 style={{fontSize:`clamp(${mob?'20px':'24px'},3.5vw,46px)`,fontWeight:900,color:C.text,letterSpacing:-2,margin:0}}>The Five Factions</h2>
+                <h2 style={{fontSize:`clamp(${mob?'20px':'24px'},3.5vw,46px)`,fontWeight:900,color:C.text,letterSpacing:-2,margin:0}}>The Six Factions</h2>
               </div>
               {!mob && <Link href="/heroes" style={ObtnStyle} onMouseEnter={ObtnHov} onMouseLeave={ObtnOut}>Explore Heroes →</Link>}
             </div>
@@ -349,7 +357,7 @@ export default function Page() {
                       <div style={{width:180,height:240,background:`linear-gradient(170deg,${C.bgCard} 0%,${f.color}15 100%)`,border:`1px solid ${f.color}35`,clipPath:ch(8),padding:'14px 12px',display:'flex',flexDirection:'column',position:'relative',overflow:'hidden'}}>
                         <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${f.color}90,transparent)`}}/>
                         <div style={{width:38,height:38,clipPath:ch(6),background:`${f.color}15`,border:`1px solid ${f.color}35`,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:10,overflow:'hidden',flexShrink:0}}>
-                          <img src={`/assets/faction/${f.name}.png`} alt={f.name} style={{width:26,height:26,objectFit:'contain'}}/>
+                          <img src={f.image} alt={f.name} style={{width:26,height:26,objectFit:'contain'}}/>
                         </div>
                         <div style={{fontSize:13,fontWeight:900,color:f.color,marginBottom:1}}>{f.name}</div>
                         <div style={{fontSize:8,color:C.textMuted,letterSpacing:2,fontWeight:600,textTransform:'uppercase',marginBottom:8}}>{f.element}</div>
@@ -362,7 +370,7 @@ export default function Page() {
               </HScroll>
             ) : (
               /* desktop: 5-column grid */
-              <div style={{padding:`0 ${px}`,display:'grid',gridTemplateColumns:tab?'repeat(3,1fr)':'repeat(5,1fr)',gap:10,height:tab?'auto':'clamp(300px,52vh,480px)'}}>
+              <div style={{padding:`0 ${px}`,display:'grid',gridTemplateColumns:tab?'repeat(3,1fr)':'repeat(6,1fr)',gap:10,height:tab?'auto':'clamp(300px,52vh,480px)'}}>
                 {fList.map(f=>{
                   const cnt = HEROES.filter(h=>h.faction===f.name).length;
                   return (
@@ -374,7 +382,7 @@ export default function Page() {
                         <div style={{position:'absolute',top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${f.color}90,transparent)`}}/>
                         <div style={{position:'absolute',bottom:-40,right:-40,width:120,height:120,borderRadius:'50%',background:f.color,opacity:.05,filter:'blur(40px)'}}/>
                         <div style={{width:46,height:46,clipPath:ch(7),background:`${f.color}15`,border:`1px solid ${f.color}35`,display:'flex',alignItems:'center',justifyContent:'center',marginBottom:12,overflow:'hidden',flexShrink:0}}>
-                          <img src={`/assets/faction/${f.name}.png`} alt={f.name} style={{width:32,height:32,objectFit:'contain'}}/>
+                          <img src={f.image} alt={f.name} style={{width:32,height:32,objectFit:'contain'}}/>
                         </div>
                         <div style={{fontSize:14,fontWeight:900,color:f.color,marginBottom:2}}>{f.name}</div>
                         <div style={{fontSize:8,color:C.textMuted,letterSpacing:2,fontWeight:600,textTransform:'uppercase',marginBottom:10}}>{f.element}</div>
@@ -400,7 +408,7 @@ export default function Page() {
                 <h2 style={{fontSize:`clamp(${mob?'20px':'24px'},3.5vw,46px)`,fontWeight:900,color:C.text,letterSpacing:-2,margin:0}}>Legendary Heroes</h2>
               </div>
               <div style={{display:'flex',alignItems:'center',gap:10}}>
-                {!mob && <Link href="/heroes" style={{fontSize:12,color:C.textMuted,fontWeight:600}}>All 53 →</Link>}
+                {!mob && <Link href="/heroes" style={{fontSize:12,color:C.textMuted,fontWeight:600}}>All 107 →</Link>}
                 <button className="scroll-arrow" onClick={()=>scrollH(-1)}>&#8249;</button>
                 <button className="scroll-arrow" onClick={()=>scrollH(1)}>&#8250;</button>
               </div>
@@ -433,14 +441,14 @@ export default function Page() {
                 <h2 style={{fontSize:`clamp(${mob?'20px':'24px'},3.5vw,46px)`,fontWeight:900,color:C.text,letterSpacing:-2,margin:0}}>Face Your Enemies</h2>
                 {!mob && <Link href="/enemies" style={ObtnStyle} onMouseEnter={ObtnHov} onMouseLeave={ObtnOut}>All Chapters →</Link>}
               </div>
-              <p style={{fontSize:mob?11:13,color:C.textSoft,marginTop:6}}>25 chapters · 75 stages · Each chapter ends with a boss that defines an era</p>
+              <p style={{fontSize:mob?11:13,color:C.textSoft,marginTop:6}}>30 chapters · 90 stages · Each chapter ends with a boss that defines an era</p>
             </div>
 
             {mob ? (
               /* mobile: horizontal scroll */
               <HScroll pad={16}>
                 {sBosses.map((boss,i)=>{
-                  const fc = FACTIONS[boss.faction]||fList[i%fList.length];
+                  const fc = { color: boss.color, accent: boss.accent };
                   return (
                     <div key={boss.chapter} style={{flexShrink:0,width:160,height:240,background:C.bgCard,border:`1px solid ${fc.color}30`,clipPath:ch(8),overflow:'hidden'}}>
                       <div style={{position:'relative',height:'58%',overflow:'hidden'}}>
@@ -462,7 +470,7 @@ export default function Page() {
               /* desktop: 5-column grid */
               <div style={{padding:`0 ${px}`,display:'grid',gridTemplateColumns:tab?'repeat(3,1fr)':'repeat(5,1fr)',gap:10,height:tab?'auto':'clamp(260px,44vh,400px)'}}>
                 {sBosses.slice(0,tab?3:5).map((boss,i)=>{
-                  const fc = FACTIONS[boss.faction]||fList[i%fList.length];
+                  const fc = { color: boss.color, accent: boss.accent };
                   return (
                     <div key={boss.chapter} className="tech-bracket" style={{height:tab?280:'100%',background:C.bgCard,border:`1px solid ${fc.color}22`,clipPath:ch(8),overflow:'hidden',transition:'all .3s',cursor:'pointer'}}
                       onMouseEnter={e=>{e.currentTarget.style.borderColor=fc.color+'65';e.currentTarget.style.boxShadow=`0 12px 40px ${fc.color}1E`;e.currentTarget.style.transform='translateY(-4px)';}}
@@ -502,7 +510,7 @@ export default function Page() {
               <div>
                 <Tag>06 — The World</Tag>
                 <h2 style={{fontSize:'clamp(22px,6vw,36px)',fontWeight:900,color:C.text,letterSpacing:-2,margin:'0 0 12px'}}>The Realm of Aetheria</h2>
-                <p style={{fontSize:13,color:C.textSoft,lineHeight:1.75,marginBottom:16}}>Five factions carved their dominion from raw elemental force across ancient lands.</p>
+                <p style={{fontSize:13,color:C.textSoft,lineHeight:1.75,marginBottom:16}}>Six factions carved their dominion from raw elemental force across ancient lands.</p>
                 <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:20}}>
                   {fList.map(f=>(
                     <div key={f.name} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',clipPath:ch(5),background:`${f.color}08`,border:`1px solid ${f.color}20`}}>
@@ -520,7 +528,7 @@ export default function Page() {
                 <div>
                   <Tag>06 — The World</Tag>
                   <h2 style={{fontSize:'clamp(24px,3.5vw,48px)',fontWeight:900,color:C.text,letterSpacing:-2,margin:'0 0 16px'}}>The Realm of Aetheria</h2>
-                  <p style={{fontSize:14,color:C.textSoft,lineHeight:1.85,marginBottom:24}}>Five factions carved their dominion from raw elemental force — volcanic highlands, frozen tundras, radiant spires, ancient forests, and abyss-scarred wastes.</p>
+                  <p style={{fontSize:14,color:C.textSoft,lineHeight:1.85,marginBottom:24}}>Six factions carved their dominion from raw elemental force — volcanic highlands, frozen tundras, radiant spires, ancient forests, abyss-scarred wastes, and endless desert dunes.</p>
                   <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:28}}>
                     {fList.map(f=>(
                       <div key={f.name} style={{display:'flex',alignItems:'center',gap:10,padding:'9px 14px',clipPath:ch(6),background:`${f.color}08`,border:`1px solid ${f.color}20`,transition:'all .2s',cursor:'pointer'}}
@@ -558,7 +566,7 @@ export default function Page() {
             <div style={{textAlign:'center',marginBottom:mob?24:44}}>
               <Tag>07 — Story Mode</Tag>
               <h2 style={{fontSize:`clamp(${mob?'22px':'26px'},4vw,52px)`,fontWeight:900,color:C.text,letterSpacing:-2,margin:'0 0 8px'}}>25 Chapters of Lore</h2>
-              {!mob && <p style={{fontSize:13,color:C.textSoft,maxWidth:460,margin:'0 auto'}}>Every stage advances a story spanning dimensional collapse, sovereign battles, and the fate of five civilizations.</p>}
+              {!mob && <p style={{fontSize:13,color:C.textSoft,maxWidth:460,margin:'0 auto'}}>Every stage advances a story spanning dimensional collapse, sovereign battles, and the fate of six civilizations.</p>}
             </div>
             <div style={{display:'grid',gridTemplateColumns:mob?'repeat(2,1fr)':tab?'repeat(2,1fr)':'repeat(4,1fr)',gap:mob?10:14}}>
               {[
@@ -612,17 +620,18 @@ export default function Page() {
             <h2 style={{fontSize:`clamp(${mob?'26px':'28px'},5vw,58px)`,fontWeight:900,margin:'0 0 10px',letterSpacing:-2,background:`linear-gradient(160deg,#fff 0%,${C.accent} 50%,${C.primaryL} 100%)`,WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>
               Begin Your Legend
             </h2>
-            <p style={{fontSize:mob?13:15,color:C.textSoft,lineHeight:1.8,marginBottom:mob?20:28}}>Free to play. Cloud save included. 53 heroes waiting to be collected.</p>
+            <p style={{fontSize:mob?13:15,color:C.textSoft,lineHeight:1.8,marginBottom:mob?20:28}}>Free to play. Cloud save included. 107 heroes waiting to be collected.</p>
 
             <div style={{display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap',marginBottom:mob?20:28}}>
-              {['53 Heroes','Cloud Save','No Pay-to-Win','75 Stages'].map(f=>(
+              {['107 Heroes','Cloud Save','No Pay-to-Win','90 Stages'].map(f=>(
                 <div key={f} style={{padding:'4px 10px',clipPath:ch(5),background:'rgba(56,189,248,.07)',border:'1px solid rgba(56,189,248,.2)',fontSize:10,fontWeight:600,color:C.textSoft}}>{f}</div>
               ))}
             </div>
 
+            {/* Android launches first — App Store button hidden until that release goes live. */}
             <div style={{display:'flex',gap:mob?10:12,justifyContent:'center',flexWrap:'wrap',marginBottom:mob?28:40}}>
-              {[{store:'App Store',sub:'Download on the',icon:'A'},{store:'Google Play',sub:'Get it on',icon:'G'}].map(s=>(
-                <a key={s.store} href="#" style={{display:'flex',alignItems:'center',gap:12,padding:mob?'12px 18px':'14px 24px',clipPath:ch(10),background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',color:'#fff',minWidth:mob?150:175,transition:'all .25s',backdropFilter:'blur(12px)'}}
+              {[{store:'Google Play',sub:'Get it on',icon:'G',href:'https://play.google.com/store/apps/details?id=aetheria_legends.unbound'}].map(s=>(
+                <a key={s.store} href={s.href} style={{display:'flex',alignItems:'center',gap:12,padding:mob?'12px 18px':'14px 24px',clipPath:ch(10),background:'rgba(255,255,255,.06)',border:'1px solid rgba(255,255,255,.12)',color:'#fff',minWidth:mob?150:175,transition:'all .25s',backdropFilter:'blur(12px)'}}
                   onMouseEnter={e=>{e.currentTarget.style.background='rgba(56,189,248,.12)';e.currentTarget.style.borderColor='rgba(56,189,248,.45)';e.currentTarget.style.transform='translateY(-3px)';}}
                   onMouseLeave={e=>{e.currentTarget.style.background='rgba(255,255,255,.06)';e.currentTarget.style.borderColor='rgba(255,255,255,.12)';e.currentTarget.style.transform='';}}
                 >

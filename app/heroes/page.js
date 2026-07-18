@@ -58,7 +58,7 @@ export default function HeroesPage() {
         <h1 style={{ fontSize: 'clamp(36px,5vw,64px)', fontWeight: 900, color: C.text, margin: '0 0 16px' }}>
           {faction !== 'All'
             ? <><span style={{ color: fc?.color }}>{faction}</span> Heroes</>
-            : 'All 53 Heroes'
+            : `All ${HEROES.length} Heroes`
           }
         </h1>
         <p style={{ fontSize: 16, color: C.textSoft, maxWidth: 480, margin: '0 auto' }}>

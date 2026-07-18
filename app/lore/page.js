@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import Nav from '../../components/Nav';
-import { CHAPTERS, FACTIONS, SOVEREIGN_HEROES } from '../../lib/gameData';
+import { CHAPTERS, FACTIONS, SOVEREIGN_HEROES, getStagesForChapter } from '../../lib/gameData';
 
 const C = {
   bgDeep: '#08031A', bgBase: '#0E0720',
@@ -10,31 +10,8 @@ const C = {
   border: 'rgba(167,139,250,0.18)',
 };
 
-// Sample dialogues for a few chapters
-const CHAPTER_DIALOGUES = {
-  1: [
-    { speaker: 'Nova Blaine', text: 'The veil is fracturing. Something ancient is stirring in the deep freeze.' },
-    { speaker: 'Vera Grove',  text: 'I\'ve never seen ice formations like these. This isn\'t natural — not even for GLACIARA.' },
-    { speaker: 'Lysha',       text: 'You are already too late. The gate opened the moment you stepped into my domain.' },
-    { speaker: 'Nova Blaine', text: 'Then we close it together. With you, or without you.' },
-  ],
-  2: [
-    { speaker: 'Kira Voltz',  text: 'The skies over the highlands are on fire. Something is ascending from below.' },
-    { speaker: 'Zane Ember',  text: 'Pyrevex. The Ashen Drake. We thought it was just a legend.' },
-    { speaker: 'Pyrevex',     text: 'LEGENDS DO NOT BURN CITIES. I DO.' },
-    { speaker: 'Kira Voltz',  text: 'Then we make sure the legend ends here.' },
-  ],
-  15: [
-    { speaker: 'Ravenna Blaze', text: 'Every faction stands together. This is unprecedented.' },
-    { speaker: 'Aeloria',       text: 'The World Eater does not distinguish between flame and frost. We are all equally in its path.' },
-    { speaker: 'Nyx Vael',      text: 'Then we answer together. One sovereign — five voices. The world does not end today.' },
-    { speaker: 'The World Eater', text: 'Your defiance is as brief as the lives you cherish.' },
-    { speaker: 'Iris Vale',     text: 'Then let us be brief. And let us be glorious.' },
-  ],
-};
-
 function DialoguePanel({ chapterId }) {
-  const dialogues = CHAPTER_DIALOGUES[chapterId];
+  const dialogues = getStagesForChapter(chapterId)[0]?.dialogues;
   if (!dialogues) return null;
   return (
     <div style={{ marginTop: 20, padding: 20, background: 'rgba(0,0,0,0.4)', borderRadius: 12,
@@ -78,8 +55,8 @@ export default function LorePage() {
           The Lore of Aetheria
         </h1>
         <p style={{ fontSize: 16, color: C.textSoft, maxWidth: 520, margin: '0 auto' }}>
-          25 chapters that chronicle the dimensional wars, sovereign awakenings, and the final stand
-          of all five factions against the void that would consume everything.
+          {CHAPTERS.length} chapters that chronicle the dimensional wars, sovereign awakenings, and the escalating
+          stand of all six factions against threats that reach far beyond the void.
         </p>
       </div>
 
@@ -89,7 +66,7 @@ export default function LorePage() {
           <div style={{ marginBottom: 40 }}>
             <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 3, color: '#D97706', marginBottom: 8 }}>SOVEREIGN STORY ARCS</div>
             <h2 style={{ fontSize: 'clamp(22px,3vw,32px)', fontWeight: 900, color: C.text, margin: 0 }}>
-              Five Sovereigns. Five Destinies.
+              {SOVEREIGN_HEROES.length} Sovereigns. {SOVEREIGN_HEROES.length} Destinies.
             </h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
@@ -173,7 +150,7 @@ export default function LorePage() {
                       <div style={{ fontSize: 12, fontWeight: 900, color: selected === ch.id ? '#fff' : C.textSoft }}>
                         {ch.title}
                       </div>
-                      <div style={{ fontSize: 10, color: C.textMuted }}>{ch.theme}</div>
+                      <div style={{ fontSize: 10, color: C.textMuted }}>{ch.subtitle}</div>
                     </div>
                   </div>
                 </div>
@@ -194,24 +171,17 @@ export default function LorePage() {
                   }}>{chapter.id}</div>
                   <div>
                     <div style={{ fontSize: 11, color: C.textMuted, letterSpacing: 2, marginBottom: 2 }}>
-                      CHAPTER {chapter.id} · {chapter.theme.toUpperCase()}
+                      CHAPTER {chapter.id}
                     </div>
                     <h3 style={{ fontSize: 26, fontWeight: 900, color: '#fff', margin: 0 }}>{chapter.title}</h3>
                   </div>
                 </div>
 
                 <p style={{ fontSize: 15, color: C.textSoft, lineHeight: 1.75, marginBottom: 24 }}>
-                  {chapter.desc}
+                  {chapter.subtitle}
                 </p>
 
                 <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
-                  <div style={{
-                    padding: '6px 14px', borderRadius: 20,
-                    background: `${chapter.color}20`, border: `1px solid ${chapter.color}40`,
-                    fontSize: 12, fontWeight: 700, color: chapter.color,
-                  }}>
-                    {chapter.theme}
-                  </div>
                   <div style={{
                     padding: '6px 14px', borderRadius: 20,
                     background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.3)',
@@ -242,19 +212,19 @@ export default function LorePage() {
             {[
               {
                 title: 'The Age of Faction Wars',
-                body: 'Before the dimensional rifts, the five factions of Aetheria existed in careful tension. EMBERVEIL and GLACIARA had warred for centuries over borderlands where volcanic heat met permanent frost. SUNSPIRE maintained a fragile neutrality, offering healing to any who requested it — at a price. VERDANIA kept its borders closed and its forest impenetrable. VOIDMARK studied the edges of reality in silence, and sometimes things they should not have studied studied them back.',
+                body: 'Before the dimensional rifts, the six factions of Aetheria existed in careful tension. EMBERVEIL and GLACIARA had warred for centuries over borderlands where volcanic heat met permanent frost. SUNSPIRE maintained a fragile neutrality, offering healing to any who requested it — at a price. VERDANIA kept its borders closed and its forest impenetrable. VOIDMARK studied the edges of reality in silence, and sometimes things they should not have studied studied them back. KHEMARA did not appear on any map at all — its dunes opening only to those who already knew the way.',
               },
               {
                 title: 'The First Rift',
-                body: 'The dimensional veil is not a metaphor. It is a physical membrane between the realm of Aetheria and the void beyond. When it began to fracture — first invisibly, then catastrophically — every sovereign felt it before their scholars named it. GLACIARA\'s original sovereign Aeloria had sealed such a rift once before, at the cost of her throne and three centuries of crystallized sleep. The current sovereigns had no such precedent to guide them. They had only each other.',
+                body: 'The dimensional veil is not a metaphor. It is a physical membrane between the realm of Aetheria and the void beyond. When it began to fracture — first invisibly, then catastrophically — every sovereign felt it before their scholars named it. GLACIARA\'s original sovereign Zimoslava had sealed such a rift once before, at the cost of her throne and centuries of crystalline sleep. The current sovereigns had no such precedent to guide them. They had only each other.',
               },
               {
                 title: 'The Sovereign Awakenings',
-                body: 'Not all sovereigns wore their crowns willingly. Aeloria awoke to find strangers sitting her seat. Ravenna Blaze returned from dimensions that should have killed her carrying fire that burns the laws of physics. Iris Vale was crowned by an ancient forest that had not blossomed in a millennium. Nyx Vael forged her sovereignty in the abyss and made the void her body. Only Aura Bloom was chosen in the traditional way — by the light itself, in ceremony, with witnesses. The others had less peaceful coronations.',
+                body: 'Not all sovereigns wore their crowns willingly. Zimoslava awoke to find a regent sitting her seat. Fiorenza returned from dimensions that should have killed her carrying fire that burns the laws of physics. Fiadh was crowned by an ancient forest that had not blossomed in a millennium. Titania forged her sovereignty in the abyss and made the void her body. Only Aurelia was chosen in the traditional way — by the light itself, in ceremony, with witnesses. Nefertari cannot be summoned or won at all; she descends only for those who seek her court directly. The others had far less peaceful coronations.',
               },
               {
                 title: 'The World Eater',
-                body: 'In the final chapter, what the five factions faced was not a villain with motivations. It was not a conqueror with goals. It was an entity from outside all known dimensions whose sole purpose was consumption. Heroes who survived the encounter described it differently each time — as if the human mind refuses to hold a consistent image of something that exists outside the rules it was built to process. The only thing every survivor agreed on: it was stopped at the moment when five sovereigns spoke with one voice.',
+                body: 'By chapter fifteen, what the six factions faced was not a villain with motivations. It was not a conqueror with goals. It was an entity from outside all known dimensions whose sole purpose was consumption. Heroes who survived the encounter described it differently each time — as if the human mind refuses to hold a consistent image of something that exists outside the rules it was built to process. The only thing every survivor agreed on: it was stopped at the moment when the sovereigns spoke with one voice. It would not be the last entity of its kind the heroes faced — fifteen chapters, and several reckonings, still lay ahead.',
               },
             ].map((sec, i) => (
               <div key={i} style={{

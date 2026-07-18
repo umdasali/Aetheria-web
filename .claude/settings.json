@@ -12,7 +12,21 @@
       "Bash(echo \"Started PID $!\")",
       "Bash(sleep 8 && tail -20 /tmp/next-dev.log)",
       "Read(//private/tmp/**)",
-      "WebFetch(domain:pgr.kurogame.net)"
+      "WebFetch(domain:pgr.kurogame.net)",
+      "Bash(grep -c \"^  {$\\\\|^    id: 'hero_\" \"/Users/codeclouds-mdalisherali/Trump-Card-game/src/data/heroes.js\")",
+      "Bash(sort -t' ' -k2 -n -u)",
+      "Bash(grep -n \"^  [A-Z]*: {$\" \"/Users/codeclouds-mdalisherali/Trump-Card-game/src/data/heroes.js\")",
+      "Bash(node extract.cjs)",
+      "Bash(node -e ' *)",
+      "Bash(wc -c /tmp/heroes_extracted.json /tmp/enemies_extracted.json /tmp/story_extracted.json /tmp/bestiary_extracted.json /tmp/faction_meta_extracted.json)",
+      "Bash(node --check /tmp/gameData_new.js)",
+      "Bash(cp /tmp/gameData_new.js /Users/codeclouds-mdalisherali/ziriverse-web/lib/gameData.js *)",
+      "Bash(python3 -)",
+      "Bash(node generate_gamedata.cjs)"
+    ],
+    "additionalDirectories": [
+      "/tmp",
+      "/private/tmp"
     ]
   }
 }
